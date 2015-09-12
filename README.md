@@ -1,5 +1,6 @@
 Instagram Scraper
 =================
+[![Build Status](https://travis-ci.org/rarcega/instagram-scraper.svg?branch=master)](https://travis-ci.org/rarcega/instagram-scraper)
 
 Scrapes an instagram user's photos and videos. Use responsibly.
 
