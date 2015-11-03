@@ -37,7 +37,7 @@ def download(item, save_dir='./'):
     file_path = os.path.join(save_dir, base_name)
 
     with open(file_path, 'wb') as file:
-        print 'Downloading ' + base_name
+        print('Downloading ' + base_name)
         bytes = requests.get(url).content
         file.write(bytes)
 
@@ -63,5 +63,5 @@ if __name__ == '__main__':
       url  = item[item['type'] + 's']['standard_resolution']['url']
       
       if future.exception() is not None:
-        print '%r generated an exception: %s' % (url, future.exception())
+        print('%r generated an exception: %s') % (url, future.exception())
 
