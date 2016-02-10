@@ -10,6 +10,11 @@ Usage
 $ python app.py <username>
 ```
 
+Install
+-------
+```
+$ pip install -r requirements.txt
+```
 
 License
 -------
