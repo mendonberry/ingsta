@@ -4,16 +4,16 @@ Instagram Scraper
 
 Scrapes an instagram user's photos and videos. Use responsibly.
 
-Usage
------
-```
-$ python app.py <username>
-```
-
 Install
 -------
 ```
 $ pip install -r requirements.txt
+```
+
+Usage
+-----
+```
+$ python app.py <username>
 ```
 
 License
