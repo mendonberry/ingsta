@@ -13,6 +13,7 @@ from tqdm import tqdm
 
 
 def crawl(username, items=[], max_id=None):
+    """Walks through the user's media"""
     url = 'http://instagram.com/' + username + '/media' + ('?&max_id=' + max_id if max_id is not None else '')
     media = json.loads(requests.get(url).text)
 
@@ -26,6 +27,7 @@ def crawl(username, items=[], max_id=None):
 
 
 def download(item, save_dir='./'):
+    """Downloads the media file"""
     if not os.path.exists(save_dir):
         os.makedirs(save_dir)
 
@@ -47,7 +49,7 @@ if __name__ == '__main__':
             future = executor.submit(download, item, './' + username)
             future_to_item[future] = item
 
-        for future in tqdm(concurrent.futures.as_completed(future_to_item), total=len(future_to_item)):
+        for future in tqdm(concurrent.futures.as_completed(future_to_item), total=len(future_to_item), desc='Downloading'):
             item = future_to_item[future]
             url = item[item['type'] + 's']['standard_resolution']['url']
 
