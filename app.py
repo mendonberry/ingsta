@@ -17,7 +17,7 @@ def crawl(username, items=[], max_id=None):
     url = 'http://instagram.com/' + username + '/media' + ('?&max_id=' + max_id if max_id is not None else '')
     media = json.loads(requests.get(url).text)
 
-    items.extend([curr_item for curr_item in media['items']])
+    items.extend(media['items'])
 
     if 'more_available' not in media or media['more_available'] is False:
         return items
@@ -38,6 +38,9 @@ def download(item, save_dir='./'):
     with open(file_path, 'wb') as file:
         bytes = requests.get(url).content
         file.write(bytes)
+
+    file_time = int(item['created_time'])
+    os.utime(file_path, (file_time, file_time))
 
 
 if __name__ == '__main__':
