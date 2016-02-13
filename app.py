@@ -31,12 +31,12 @@ def download(item, save_dir='./'):
     if not os.path.exists(save_dir):
         os.makedirs(save_dir)
 
-    url = item[item['type'] + 's']['standard_resolution']['url']
-    base_name = url.split('/')[-1].split('?')[0]
+    item['url'] = item[item['type'] + 's']['standard_resolution']['url']
+    base_name = item['url'].split('/')[-1].split('?')[0]
     file_path = os.path.join(save_dir, base_name)
 
     with open(file_path, 'wb') as file:
-        bytes = requests.get(url).content
+        bytes = requests.get(item['url']).content
         file.write(bytes)
 
     file_time = int(item['created_time'])
@@ -54,7 +54,6 @@ if __name__ == '__main__':
 
         for future in tqdm(concurrent.futures.as_completed(future_to_item), total=len(future_to_item), desc='Downloading'):
             item = future_to_item[future]
-            url = item[item['type'] + 's']['standard_resolution']['url']
 
             if future.exception() is not None:
-                print ('%r generated an exception: %s') % (url, future.exception())
+                print ('%r generated an exception: %s') % (item['url'], future.exception())
