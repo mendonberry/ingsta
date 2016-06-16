@@ -11,49 +11,58 @@ import requests
 import sys
 from tqdm import tqdm
 
+class InstagramScraper:
 
-def crawl(username, items=[], max_id=None):
-    """Walks through the user's media"""
-    url = 'http://instagram.com/' + username + '/media' + ('?&max_id=' + max_id if max_id is not None else '')
-    media = json.loads(requests.get(url).text)
+    """Instagram Scraper"""
+    def __init__(self, username):
+        self.username = username
+        self.numPosts = 0
+        self.executor = concurrent.futures.ThreadPoolExecutor(max_workers=10)
+        self.future_to_item = {}
 
-    items.extend(media['items'])
+    def crawl(self, max_id=None):
+        """Walks through the user's media"""
+        url = 'http://instagram.com/' + self.username + '/media' + ('?&max_id=' + max_id if max_id is not None else '')
+        resp = requests.get(url)
+        media = json.loads(requests.get(url).text)
 
-    if 'more_available' not in media or media['more_available'] is False:
-        return items
-    else:
-        max_id = media['items'][-1]['id']
-        return crawl(username, items, max_id)
+        self.numPosts += len(media['items'])
 
+        for item in media['items']:
+            future = self.executor.submit(self.download, item, './' + self.username)
+            self.future_to_item[future] = item
 
-def download(item, save_dir='./'):
-    """Downloads the media file"""
-    if not os.path.exists(save_dir):
-        os.makedirs(save_dir)
+        sys.stdout.write('\rFound %i post(s)' % self.numPosts)
+        sys.stdout.flush()
 
-    item['url'] = item[item['type'] + 's']['standard_resolution']['url']
-    base_name = item['url'].split('/')[-1].split('?')[0]
-    file_path = os.path.join(save_dir, base_name)
+        if 'more_available' in media and media['more_available'] is True:
+            max_id = media['items'][-1]['id']
+            self.crawl(max_id)
 
-    with open(file_path, 'wb') as file:
-        bytes = requests.get(item['url']).content
-        file.write(bytes)
+    def download(self, item, save_dir='./'):
+        """Downloads the media file"""
+        if not os.path.exists(save_dir):
+            os.makedirs(save_dir)
 
-    file_time = int(item['created_time'])
-    os.utime(file_path, (file_time, file_time))
+        item['url'] = item[item['type'] + 's']['standard_resolution']['url']
+        base_name = item['url'].split('/')[-1].split('?')[0]
+        file_path = os.path.join(save_dir, base_name)
 
+        with open(file_path, 'wb') as file:
+            bytes = requests.get(item['url']).content
+            file.write(bytes)
+
+        file_time = int(item['created_time'])
+        os.utime(file_path, (file_time, file_time))
 
 if __name__ == '__main__':
     username = sys.argv[1]
 
-    with concurrent.futures.ThreadPoolExecutor(max_workers=10) as executor:
-        future_to_item = {}
-        for item in crawl(username):
-            future = executor.submit(download, item, './' + username)
-            future_to_item[future] = item
+    scraper = InstagramScraper(username)
+    scraper.crawl()
 
-        for future in tqdm(concurrent.futures.as_completed(future_to_item), total=len(future_to_item), desc='Downloading'):
-            item = future_to_item[future]
+    for future in tqdm(concurrent.futures.as_completed(scraper.future_to_item), total=len(scraper.future_to_item), desc='Downloading'):
+        item = scraper.future_to_item[future]
 
-            if future.exception() is not None:
-                print ('%r generated an exception: %s') % (item['url'], future.exception())
+        if future.exception() is not None:
+            print ('%r generated an exception: %s') % (item['url'], future.exception())
