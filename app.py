@@ -9,7 +9,11 @@ import json
 import os
 import requests
 import sys
+import warnings
 from tqdm import tqdm
+
+warnings.filterwarnings("ignore")
+
 
 class InstagramScraper:
 
