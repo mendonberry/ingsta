@@ -23,7 +23,7 @@ class InstagramScraper:
         """Walks through the user's media"""
         url = 'http://instagram.com/' + self.username + '/media' + ('?&max_id=' + max_id if max_id is not None else '')
         resp = requests.get(url)
-        media = json.loads(requests.get(url).text)
+        media = json.loads(resp.text)
 
         self.numPosts += len(media['items'])
 
