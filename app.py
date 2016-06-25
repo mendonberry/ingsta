@@ -7,13 +7,13 @@ python app.py <username>
 import concurrent.futures
 import json
 import os
+import re
 import requests
+import tqdm
 import sys
 import warnings
-from tqdm import tqdm
 
 warnings.filterwarnings("ignore")
-
 
 class InstagramScraper:
 
@@ -25,18 +25,22 @@ class InstagramScraper:
 
     def crawl(self, max_id=None):
         """Walks through the user's media"""
-        url = 'http://instagram.com/' + self.username + '/media' + ('?&max_id=' + max_id if max_id is not None else '')
+        url = 'http://instagram.com/' + self.username + '/media'
+
+        if max_id is not None:
+            url += '?&max_id=' + max_id 
+
         resp = requests.get(url)
         media = json.loads(resp.text)
 
         self.numPosts += len(media['items'])
 
+        sys.stdout.write('\rFound %i post(s)' % self.numPosts)
+        sys.stdout.flush()
+
         for item in media['items']:
             future = self.executor.submit(self.download, item, './' + self.username)
             self.future_to_item[future] = item
-
-        sys.stdout.write('\rFound %i post(s)' % self.numPosts)
-        sys.stdout.flush()
 
         if 'more_available' in media and media['more_available'] is True:
             max_id = media['items'][-1]['id']
@@ -48,6 +52,9 @@ class InstagramScraper:
             os.makedirs(save_dir)
 
         item['url'] = item[item['type'] + 's']['standard_resolution']['url']
+        # remove dimensions to get largest image
+        item['url'] = re.sub(r'/s\d{3,}x\d{3,}/', '/', item['url']) 
+
         base_name = item['url'].split('/')[-1].split('?')[0]
         file_path = os.path.join(save_dir, base_name)
 
@@ -64,8 +71,8 @@ if __name__ == '__main__':
     scraper = InstagramScraper(username)
     scraper.crawl()
 
-    for future in tqdm(concurrent.futures.as_completed(scraper.future_to_item), total=len(scraper.future_to_item), desc='Downloading'):
+    for future in tqdm.tqdm(concurrent.futures.as_completed(scraper.future_to_item), total=len(scraper.future_to_item), desc='Downloading'):
         item = scraper.future_to_item[future]
 
         if future.exception() is not None:
-            print ('%r generated an exception: %s') % (item['url'], future.exception())
+            print('%r generated an exception: %s') % (item['url'], future.exception())
