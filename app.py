@@ -7,6 +7,7 @@ python app.py <username>
 import concurrent.futures
 import json
 import os
+import pprint
 import re
 import requests
 import tqdm
@@ -75,4 +76,4 @@ if __name__ == '__main__':
         item = scraper.future_to_item[future]
 
         if future.exception() is not None:
-            print('%r generated an exception: %s') % (item['url'], future.exception())
+            print('%r generated an exception: %s') % (pprint.pformat(item), future.exception())
