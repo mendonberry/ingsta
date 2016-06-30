@@ -5,9 +5,9 @@ Usage:
 python app.py <username>
 """
 import concurrent.futures
+import errno
 import json
 import os
-import pprint
 import re
 import requests
 import tqdm
@@ -49,8 +49,15 @@ class InstagramScraper:
 
     def download(self, item, save_dir='./'):
         """Downloads the media file"""
-        if not os.path.exists(save_dir):
+        try:
             os.makedirs(save_dir)
+        except OSError as e:
+            if e.errno == errno.EEXIST and os.path.isdir(save_dir):
+                # another thread beat us to creating this dir
+                pass
+            else:
+                # target dir exists as a file, or a different error
+                raise
 
         item['url'] = item[item['type'] + 's']['standard_resolution']['url']
         # remove dimensions to get largest image
@@ -76,4 +83,4 @@ if __name__ == '__main__':
         item = scraper.future_to_item[future]
 
         if future.exception() is not None:
-            print('%r generated an exception: %s') % (pprint.pformat(item), future.exception())
+            print('%r generated an exception: %s') % (item['id'], future.exception())
