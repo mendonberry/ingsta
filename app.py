@@ -59,11 +59,11 @@ class InstagramScraper:
                 # target dir exists as a file, or a different error
                 raise
 
-        item['url'] = item[item['type'] + 's']['standard_resolution']['url']
+        item['url'] = item[item['type'] + 's']['standard_resolution']['url'].split('?')[0]
         # remove dimensions to get largest image
         item['url'] = re.sub(r'/s\d{3,}x\d{3,}/', '/', item['url']) 
 
-        base_name = item['url'].split('/')[-1].split('?')[0]
+        base_name = item['url'].split('/')[-1]
         file_path = os.path.join(save_dir, base_name)
 
         with open(file_path, 'wb') as file:
