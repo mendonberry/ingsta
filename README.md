@@ -1,20 +1,33 @@
+<img src="http://i.imgur.com/iH2jdhV.png" align="right" />
+
 Instagram Scraper
 =================
 [![Build Status](https://travis-ci.org/rarcega/instagram-scraper.svg?branch=master)](https://travis-ci.org/rarcega/instagram-scraper)
 
-Scrapes an instagram user's photos and videos. Use responsibly.
+instagram-scraper is a command-line application written in Python that scrapes and downloads an instagram user's photos and videos. Use responsibly.
 
 Install
 -------
-```
+To install the project dependencies:
+```bash
 $ pip install -r requirements.txt
 ```
 
 Usage
 -----
+To run the application:
+```bash
+$ python app.py <username>             
 ```
-$ python app.py <username>
-```
+Media will be download to *`<current working directory>/<username>`*
+
+Contributing
+------------
+
+1. Check the open issues or open a new issue to start a discussion around
+   your feature idea or the bug you found
+2. Fork the repository, make your changes, and add yourself to [AUTHORS.md](AUTHORS.md)
+3. Send a pull request
 
 License
 -------
