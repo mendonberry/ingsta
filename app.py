@@ -32,7 +32,11 @@ class InstagramScraper:
             url += '?&max_id=' + max_id 
 
         resp = requests.get(url)
-        media = json.loads(resp.text)
+
+        if resp.status_code == 200:
+            media = json.loads(resp.text)
+        else:
+            raise ValueError('User %s does not exist' % self.username)
 
         self.numPosts += len(media['items'])
 
