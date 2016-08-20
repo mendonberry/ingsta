@@ -35,6 +35,9 @@ class InstagramScraper:
 
         if resp.status_code == 200:
             media = json.loads(resp.text)
+
+            if not media['items']:
+                raise ValueError('User %s is private' % self.username)
         else:
             raise ValueError('User %s does not exist' % self.username)
 
