@@ -25,7 +25,23 @@ class InstagramScraper:
         self.future_to_item = {}
 
     def crawl(self, max_id=None):
-        """Walks through the user's media"""
+        """Crawls through the user's media"""
+        media = self.get_media(max_id)
+
+        self.numPosts += len(media['items'])
+        sys.stdout.write('\rFound %i post(s)' % self.numPosts)
+        sys.stdout.flush()
+
+        for item in media['items']:
+            future = self.executor.submit(self.download, item, './' + self.username)
+            self.future_to_item[future] = item
+
+        if 'more_available' in media and media['more_available'] is True:
+            max_id = media['items'][-1]['id']
+            self.crawl(max_id)
+
+    def get_media(self, max_id):
+        """Gets the user's media metadata"""
         url = 'http://instagram.com/' + self.username + '/media'
 
         if max_id is not None:
@@ -38,21 +54,10 @@ class InstagramScraper:
 
             if not media['items']:
                 raise ValueError('User %s is private' % self.username)
+
+            return media
         else:
             raise ValueError('User %s does not exist' % self.username)
-
-        self.numPosts += len(media['items'])
-
-        sys.stdout.write('\rFound %i post(s)' % self.numPosts)
-        sys.stdout.flush()
-
-        for item in media['items']:
-            future = self.executor.submit(self.download, item, './' + self.username)
-            self.future_to_item[future] = item
-
-        if 'more_available' in media and media['more_available'] is True:
-            max_id = media['items'][-1]['id']
-            self.crawl(max_id)
 
     def download(self, item, save_dir='./'):
         """Downloads the media file"""
