@@ -42,11 +42,10 @@ class InstagramScraper:
 
     def get_media(self, max_id):
         """Gets the user's media metadata"""
-        url = 'http://instagram.com/' + self.username + '/media'
+        url = 'https://instagram.com/' + self.username + '/media'
 
         if max_id is not None:
-            url += '?&max_id=' + max_id 
-
+            url += '?&max_id=' + max_id
         resp = requests.get(url)
 
         if resp.status_code == 200:
