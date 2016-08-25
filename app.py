@@ -78,12 +78,14 @@ class InstagramScraper:
         base_name = item['url'].split('/')[-1]
         file_path = os.path.join(save_dir, base_name)
 
-        with open(file_path, 'wb') as file:
-            bytes = requests.get(item['url']).content
-            file.write(bytes)
+        if not os.path.isfile(file_path):
 
-        file_time = int(item['created_time'])
-        os.utime(file_path, (file_time, file_time))
+            with open(file_path, 'wb') as file:
+                bytes = requests.get(item['url']).content
+                file.write(bytes)
+
+            file_time = int(item['created_time'])
+            os.utime(file_path, (file_time, file_time))
 
 if __name__ == '__main__':
     username = sys.argv[1]
