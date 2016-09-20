@@ -80,7 +80,12 @@ class InstagramScraper:
         if not os.path.isfile(file_path):
 
             with open(file_path, 'wb') as file:
-                bytes = requests.get(item['url']).content
+                try:
+                    bytes = requests.get(item['url']).content
+                except requests.exceptions.ConnectionError:
+					sleep(5)
+					bytes = requests.get(item['url']).content
+					
                 file.write(bytes)
 
             file_time = int(item['created_time'])
