@@ -83,8 +83,8 @@ class InstagramScraper:
                 try:
                     bytes = requests.get(item['url']).content
                 except requests.exceptions.ConnectionError:
-					sleep(5)
-					bytes = requests.get(item['url']).content
+		    sleep(5)
+		    bytes = requests.get(item['url']).content
 					
                 file.write(bytes)
 
