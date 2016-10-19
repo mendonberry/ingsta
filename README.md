@@ -15,10 +15,21 @@ $ pip install -r requirements.txt
 
 Usage
 -----
-To run the application:
+To scrape a public user's media:
 ```bash
 $ python app.py <username>             
 ```
+
+To specify the download destination:
+```bash
+$ python app.py <username> -d /path/to/destination
+```
+
+To scrape a private user's media when you are an approved follower:
+```bash
+$ python app.py <username> -u <your username> -p <your password>
+```
+
 Media will be download to *`<current working directory>/<username>`*
 
 Contributing
