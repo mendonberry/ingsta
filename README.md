@@ -30,7 +30,7 @@ To scrape a private user's media when you are an approved follower:
 $ python app.py <username> -u <your username> -p <your password>
 ```
 
-Media will be download to *`<current working directory>/<username>`*
+By default media will be download to *`<current working directory>/<username>`*
 
 Contributing
 ------------
