@@ -17,6 +17,7 @@ import sys
 import tqdm
 import traceback
 import warnings
+import time
 
 warnings.filterwarnings('ignore')
 
@@ -139,7 +140,7 @@ class InstagramScraper:
                 try:
                     bytes = self.session.get(item['url']).content
                 except requests.exceptions.ConnectionError:
-                    sleep(5)
+                    time.sleep(5)
                     bytes = requests.get(item['url']).content
 
                 file.write(bytes)
