@@ -42,6 +42,16 @@ class InstagramScraper:
         else:
             self.dst = './' + self.username
 
+        try:
+            os.makedirs(self.dst)
+        except OSError, e:
+            if e.errno == errno.EEXIST and os.path.isdir(self.dst):
+                # Directory already exists
+                pass
+            else:
+                # Target dir exists as a file, or a different error
+                raise
+
         self.session = requests.Session()
         self.csrf_token = None
         self.logged_in = False
@@ -115,16 +125,6 @@ class InstagramScraper:
 
     def download(self, item, save_dir='./'):
         """Downloads the media file"""
-
-        try:
-            os.makedirs(save_dir)
-        except OSError, e:
-            if e.errno == errno.EEXIST and os.path.isdir(save_dir):
-                # another thread beat us to creating this dir
-                pass
-            else:
-                # target dir exists as a file, or a different error
-                raise
 
         item['url'] = item[item['type'] + 's']['standard_resolution']['url'].split('?')[0]
         # remove dimensions to get largest image
