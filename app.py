@@ -87,22 +87,25 @@ class InstagramScraper:
     def crawl(self, max_id=None):
         """Crawls through the user's media"""
 
-        media = self.get_media(max_id)
-
-        self.numPosts += len(media['items'])
-        sys.stdout.write('\rFound %i post(s)' % self.numPosts)
-        sys.stdout.flush()
-
-        for item in media['items']:
+        for item in tqdm.tqdm(self.media_gen(), desc="Searching for media", unit=" images"):
             future = self.executor.submit(self.download, item, self.dst)
             self.future_to_item[future] = item
 
-        if 'more_available' in media and media['more_available']:
-            max_id = media['items'][-1]['id']
-            self.crawl(max_id)
+    def media_gen(self):
+        """Generator of all user's media"""
 
-    def get_media(self, max_id):
-        """Gets the user's media metadata"""
+        media = self.fetch_media(max_id=None)
+        while True:
+            for item in media['items']:
+                yield item
+            if media.get('more_available') == True:
+                max_id = media['items'][-1]['id']
+                media = self.fetch_media(max_id)
+            else:
+                return
+
+    def fetch_media(self, max_id):
+        """Fetches the user's media metadata"""
 
         url = self.media_url
 
