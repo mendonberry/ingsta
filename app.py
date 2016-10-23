@@ -24,15 +24,14 @@ warnings.filterwarnings('ignore')
 
 class InstagramScraper:
 
-    base_url = 'https://www.instagram.com/'
-    login_url = base_url + 'accounts/login/ajax/'
-    logout_url = base_url + 'accounts/logout/'
-    media_url = base_url + '%s/media'
-
     def __init__(self, username, login_user=None, login_pass=None, dst=None):
+        self.base_url = 'https://www.instagram.com/'
+        self.login_url = self.base_url + 'accounts/login/ajax/'
+        self.logout_url = self.base_url + 'accounts/logout/'
         self.username = username
         self.login_user = login_user
         self.login_pass = login_pass
+        self.media_url = self.base_url + self.username + '/media'
 
         self.numPosts = 0
         self.executor = concurrent.futures.ThreadPoolExecutor(max_workers=10)
@@ -105,7 +104,7 @@ class InstagramScraper:
     def get_media(self, max_id):
         """Gets the user's media metadata"""
 
-        url = self.media_url % self.username
+        url = self.media_url
 
         if max_id is not None:
             url += '?&max_id=' + max_id
