@@ -176,5 +176,4 @@ if __name__ == '__main__':
         if future.exception() is not None:
             print '%r generated an exception: %s' % (item['id'], future.exception())
 
-    concurrent.futures.wait(list(scraper.future_to_item.keys()))
     scraper.logout()
