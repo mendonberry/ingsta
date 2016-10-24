@@ -84,12 +84,25 @@ class InstagramScraper:
             except:
                 traceback.print_exc()
 
-    def crawl(self, max_id=None):
-        """Crawls through the user's media"""
+    def scrape(self, max_id=None):
+        """Crawls through and downloads user's media"""
 
+        # Crawls the media and sends it to the executor.
         for item in tqdm.tqdm(self.media_gen(), desc="Searching for media", unit=" images"):
             future = self.executor.submit(self.download, item, self.dst)
             self.future_to_item[future] = item
+
+        # Displays the progress bar of completed downloads. Might not even pop up if all media is downloaded while
+        # the above loop finishes.
+        for future in tqdm.tqdm(concurrent.futures.as_completed(scraper.future_to_item), total=len(scraper.future_to_item),
+                                desc='Downloading'):
+            item = scraper.future_to_item[future]
+
+            if future.exception() is not None:
+                print '%r generated an exception: %s' % (item['id'], future.exception())
+
+        scraper.logout()
+
 
     def media_gen(self):
         """Generator of all user's media"""
@@ -167,13 +180,4 @@ if __name__ == '__main__':
         raise ValueError('Must provide login user AND password')
 
     scraper = InstagramScraper(args.username, args.login_user, args.login_pass, args.destination)
-    scraper.crawl()
-
-    for future in tqdm.tqdm(concurrent.futures.as_completed(scraper.future_to_item), total=len(scraper.future_to_item),
-                            desc='Downloading'):
-        item = scraper.future_to_item[future]
-
-        if future.exception() is not None:
-            print '%r generated an exception: %s' % (item['id'], future.exception())
-
-    scraper.logout()
+    scraper.scrape()
