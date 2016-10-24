@@ -84,7 +84,7 @@ class InstagramScraper:
             except:
                 traceback.print_exc()
 
-    def scrape(self, max_id=None):
+    def scrape(self):
         """Crawls through and downloads user's media"""
 
         # Crawls the media and sends it to the executor.
