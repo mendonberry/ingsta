@@ -10,27 +10,44 @@ Install
 -------
 To install the project dependencies:
 ```bash
-$ pip install -r requirements.txt
+$ python setup.py install
+```
+
+If you don't want to install it globally, you can use virtualenv
+```bash
+$ virtualenv venv
+$ source venv/bin/activate
+$ python setup.py install
 ```
 
 Usage
 -----
 To scrape a public user's media:
 ```bash
-$ python app.py <username>             
+$ instagram-scraper <username>             
 ```
 
 To specify the download destination:
 ```bash
-$ python app.py <username> -d /path/to/destination
+$ instagram-scraper <username> -d /path/to/destination
 ```
 
 To scrape a private user's media when you are an approved follower:
 ```bash
-$ python app.py <username> -u <your username> -p <your password>
+$ instagram-scraper <username> -u <your username> -p <your password>
 ```
 
 By default media will be download to *`<current working directory>/<username>`*
+
+Develop
+-------
+
+Clone the repo and create a virtualenv 
+```bash
+$ virtualenv venv
+$ source venv/bin/activate
+$ python setup.py develop
+```
 
 Contributing
 ------------
