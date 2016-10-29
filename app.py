@@ -17,21 +17,21 @@ import sys
 import tqdm
 import traceback
 import warnings
+import time
 
 warnings.filterwarnings('ignore')
 
 
 class InstagramScraper:
 
-    base_url = 'https://www.instagram.com/'
-    login_url = base_url + 'accounts/login/ajax/'
-    logout_url = base_url + 'accounts/logout/'
-    media_url = base_url + '%s/media'
-
     def __init__(self, username, login_user=None, login_pass=None, dst=None):
+        self.base_url = 'https://www.instagram.com/'
+        self.login_url = self.base_url + 'accounts/login/ajax/'
+        self.logout_url = self.base_url + 'accounts/logout/'
         self.username = username
         self.login_user = login_user
         self.login_pass = login_pass
+        self.media_url = self.base_url + self.username + '/media'
 
         self.numPosts = 0
         self.executor = concurrent.futures.ThreadPoolExecutor(max_workers=10)
@@ -41,6 +41,16 @@ class InstagramScraper:
             self.dst = dst
         else:
             self.dst = './' + self.username
+
+        try:
+            os.makedirs(self.dst)
+        except OSError, e:
+            if e.errno == errno.EEXIST and os.path.isdir(self.dst):
+                # Directory already exists
+                pass
+            else:
+                # Target dir exists as a file, or a different error
+                raise
 
         self.session = requests.Session()
         self.csrf_token = None
@@ -74,27 +84,43 @@ class InstagramScraper:
             except:
                 traceback.print_exc()
 
-    def crawl(self, max_id=None):
-        """Crawls through the user's media"""
+    def scrape(self):
+        """Crawls through and downloads user's media"""
 
-        media = self.get_media(max_id)
-
-        self.numPosts += len(media['items'])
-        sys.stdout.write('\rFound %i post(s)' % self.numPosts)
-        sys.stdout.flush()
-
-        for item in media['items']:
+        # Crawls the media and sends it to the executor.
+        for item in tqdm.tqdm(self.media_gen(), desc="Searching for media", unit=" images"):
             future = self.executor.submit(self.download, item, self.dst)
             self.future_to_item[future] = item
 
-        if 'more_available' in media and media['more_available']:
-            max_id = media['items'][-1]['id']
-            self.crawl(max_id)
+        # Displays the progress bar of completed downloads. Might not even pop up if all media is downloaded while
+        # the above loop finishes.
+        for future in tqdm.tqdm(concurrent.futures.as_completed(scraper.future_to_item), total=len(scraper.future_to_item),
+                                desc='Downloading'):
+            item = scraper.future_to_item[future]
 
-    def get_media(self, max_id):
-        """Gets the user's media metadata"""
+            if future.exception() is not None:
+                print '%r generated an exception: %s' % (item['id'], future.exception())
 
-        url = self.media_url % self.username
+        scraper.logout()
+
+
+    def media_gen(self):
+        """Generator of all user's media"""
+
+        media = self.fetch_media(max_id=None)
+        while True:
+            for item in media['items']:
+                yield item
+            if media.get('more_available') == True:
+                max_id = media['items'][-1]['id']
+                media = self.fetch_media(max_id)
+            else:
+                return
+
+    def fetch_media(self, max_id):
+        """Fetches the user's media metadata"""
+
+        url = self.media_url
 
         if max_id is not None:
             url += '?&max_id=' + max_id
@@ -116,16 +142,6 @@ class InstagramScraper:
     def download(self, item, save_dir='./'):
         """Downloads the media file"""
 
-        try:
-            os.makedirs(save_dir)
-        except OSError, e:
-            if e.errno == errno.EEXIST and os.path.isdir(save_dir):
-                # another thread beat us to creating this dir
-                pass
-            else:
-                # target dir exists as a file, or a different error
-                raise
-
         item['url'] = item[item['type'] + 's']['standard_resolution']['url'].split('?')[0]
         # remove dimensions to get largest image
         item['url'] = re.sub(r'/s\d{3,}x\d{3,}/', '/', item['url'])
@@ -139,7 +155,7 @@ class InstagramScraper:
                 try:
                     bytes = self.session.get(item['url']).content
                 except requests.exceptions.ConnectionError:
-                    sleep(5)
+                    time.sleep(5)
                     bytes = requests.get(item['url']).content
 
                 file.write(bytes)
@@ -164,14 +180,4 @@ if __name__ == '__main__':
         raise ValueError('Must provide login user AND password')
 
     scraper = InstagramScraper(args.username, args.login_user, args.login_pass, args.destination)
-    scraper.crawl()
-
-    for future in tqdm.tqdm(concurrent.futures.as_completed(scraper.future_to_item), total=len(scraper.future_to_item),
-                            desc='Downloading'):
-        item = scraper.future_to_item[future]
-
-        if future.exception() is not None:
-            print '%r generated an exception: %s' % (item['id'], future.exception())
-
-    concurrent.futures.wait(list(scraper.future_to_item.keys()))
-    scraper.logout()
+    scraper.scrape()

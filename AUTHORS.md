@@ -5,4 +5,5 @@ Authors
 
 - Charlie Gorichanaz ([@CNG](https://github.com/CNG))
 - Jacob Lukose ([@jacoblukose](https://github.com/jacoblukose))
+- Nace Oroz ([@orkaa](https://github.com/orkaa))
 [home]: README.md
