@@ -110,17 +110,17 @@ class InstagramScraper:
     def media_gen(self):
         """Generator of all user's media"""
 
-        media = self.fetch_media(max_id=None)
+        media = self.fetch_media_json(max_id=None)
         while True:
             for item in media['items']:
                 yield item
             if media.get('more_available') == True:
                 max_id = media['items'][-1]['id']
-                media = self.fetch_media(max_id)
+                media = self.fetch_media_json(max_id)
             else:
                 return
 
-    def fetch_media(self, max_id):
+    def fetch_media_json(self, max_id):
         """Fetches the user's media metadata"""
 
         url = self.media_url
