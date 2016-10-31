@@ -49,6 +49,17 @@ $ source venv/bin/activate
 $ python setup.py develop
 ```
 
+Running Tests
+-------------
+
+```bash
+$ python setup.py test
+
+or just 
+
+$ nosetests
+```
+
 Contributing
 ------------
 
