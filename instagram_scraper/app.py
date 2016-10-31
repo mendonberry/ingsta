@@ -24,7 +24,7 @@ warnings.filterwarnings('ignore')
 
 class InstagramScraper:
 
-    def __init__(self, username, login_user=None, login_pass=None, dst=None):
+    def __init__(self, username, login_user=None, login_pass=None, dst=None, quiet=False):
         self.base_url = 'https://www.instagram.com/'
         self.login_url = self.base_url + 'accounts/login/ajax/'
         self.logout_url = self.base_url + 'accounts/logout/'
@@ -32,6 +32,9 @@ class InstagramScraper:
         self.login_user = login_user
         self.login_pass = login_pass
         self.media_url = self.base_url + self.username + '/media'
+
+        # Controls the graphical output of tqdm
+        self.quiet = quiet
 
         self.numPosts = 0
         self.executor = concurrent.futures.ThreadPoolExecutor(max_workers=10)
@@ -88,14 +91,14 @@ class InstagramScraper:
         """Crawls through and downloads user's media"""
 
         # Crawls the media and sends it to the executor.
-        for item in tqdm.tqdm(self.media_gen(), desc="Searching for media", unit=" images"):
+        for item in tqdm.tqdm(self.media_gen(), desc="Searching for media", unit=" images", disable=self.quiet):
             future = self.executor.submit(self.download, item, self.dst)
             self.future_to_item[future] = item
 
         # Displays the progress bar of completed downloads. Might not even pop up if all media is downloaded while
         # the above loop finishes.
         for future in tqdm.tqdm(concurrent.futures.as_completed(self.future_to_item), total=len(self.future_to_item),
-                                desc='Downloading'):
+                                desc='Downloading', disable=self.quiet):
             item = self.future_to_item[future]
 
             if future.exception() is not None:
