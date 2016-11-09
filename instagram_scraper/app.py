@@ -32,6 +32,7 @@ class InstagramScraper:
         self.login_user = login_user
         self.login_pass = login_pass
         self.media_url = self.base_url + self.username + '/media'
+        self.stories_url = 'https://i.instagram.com/api/v1/feed/user/{0}/reel_media/'
 
         self.numPosts = 0
         self.executor = concurrent.futures.ThreadPoolExecutor(max_workers=10)
@@ -53,8 +54,9 @@ class InstagramScraper:
                 raise
 
         self.session = requests.Session()
-        self.csrf_token = None
+        self.cookies = None
         self.logged_in = False
+        self.ig_user = None
 
         if self.login_user and self.login_pass:
             self.login()
@@ -68,7 +70,7 @@ class InstagramScraper:
         login_data = {'username': self.login_user, 'password': self.login_pass}
         login = self.session.post(self.login_url, data=login_data, allow_redirects=True)
         self.session.headers.update({'X-CSRFToken': login.cookies['csrftoken']})
-        self.csrf_token = login.cookies['csrftoken']
+        self.cookies = login.cookies
 
         if login.status_code == 200 and json.loads(login.text)['authenticated']:
             self.logged_in = True
@@ -78,7 +80,7 @@ class InstagramScraper:
     def logout(self):
         if self.logged_in:
             try:
-                logout_data = {'csrfmiddlewaretoken': self.csrf_token}
+                logout_data = {'csrfmiddlewaretoken': self.cookies['csrftoken']}
                 self.session.post(self.logout_url, data=logout_data)
                 self.logged_in = False
             except:
@@ -87,8 +89,20 @@ class InstagramScraper:
     def scrape(self):
         """Crawls through and downloads user's media"""
 
+        if self.logged_in:
+            self.ig_user = self.get_user()
+
+            if self.ig_user:
+                stories = self.get_user_stories()
+
+                if stories:
+                     # Crawls the user's stories and sends it to the executor.
+                    for item in tqdm.tqdm(stories['items'], desc="Searching for stories", total=len(stories['items']), unit=" images/videos"):
+                        future = self.executor.submit(self.download, item, self.dst)
+                        self.future_to_item[future] = item
+
         # Crawls the media and sends it to the executor.
-        for item in tqdm.tqdm(self.media_gen(), desc="Searching for media", unit=" images"):
+        for item in tqdm.tqdm(self.media_gen(), desc="Searching for media", unit=" images/videos"):
             future = self.executor.submit(self.download, item, self.dst)
             self.future_to_item[future] = item
 
@@ -103,11 +117,11 @@ class InstagramScraper:
 
         self.logout()
 
-
     def media_gen(self):
         """Generator of all user's media"""
 
         media = self.fetch_media(max_id=None)
+
         while True:
             for item in media['items']:
                 yield item
@@ -116,6 +130,29 @@ class InstagramScraper:
                 media = self.fetch_media(max_id)
             else:
                 return
+
+    def get_user(self):
+        """Gets the user's metadata"""
+
+        resp = self.session.get(self.base_url + self.username)
+        shared_data = resp.text.split("window._sharedData = ")[1].split(";</script>")[0]
+        return json.loads( shared_data )['entry_data']['ProfilePage'][0]['user']
+
+    def get_user_stories(self):
+        """Gets the user's stories"""
+
+        resp = self.session.get(self.stories_url.format(self.ig_user['id']), headers={
+            'user-agent' : 'Instagram 9.5.2 (iPhone7,2; iPhone OS 9_3_3; en_US; en-US; scale=2.00; 750x1334) AppleWebKit/420+',
+            'cookie'     : 'ds_user_id=' + self.cookies['ds_user_id'] + '; sessionid=' + self.cookies['sessionid'] + ';'
+        })
+
+        retval = json.loads(resp.text)
+
+        if resp.status_code == 200 and 'items' in retval and len(retval['items']) > 0:
+            retval['items'] = [self.set_story_url(item) for item in retval['items']]
+            return retval
+        
+        return None
 
     def fetch_media(self, max_id):
         """Fetches the user's media metadata"""
@@ -134,17 +171,24 @@ class InstagramScraper:
                 self.logout()
                 raise ValueError('User {0} is private'.format(self.username))
 
+            media['items'] = [self.set_media_url(item) for item in media['items']]
             return media
         else:
             self.logout()
             raise ValueError('User {0} does not exist'.format(self.username))
 
-    def download(self, item, save_dir='./'):
-        """Downloads the media file"""
-
+    def set_media_url(self, item):
         item['url'] = item[item['type'] + 's']['standard_resolution']['url'].split('?')[0]
         # remove dimensions to get largest image
         item['url'] = re.sub(r'/s\d{3,}x\d{3,}/', '/', item['url'])
+        return item
+
+    def set_story_url(self, item):
+        item['url'] = item['image_versions2']['candidates'][0]['url'].split('?')[0]
+        return item
+
+    def download(self, item, save_dir='./'):
+        """Downloads the media file"""
 
         base_name = item['url'].split('/')[-1]
         file_path = os.path.join(save_dir, base_name)
@@ -160,7 +204,7 @@ class InstagramScraper:
 
                 file.write(bytes)
 
-            file_time = int(item['created_time'])
+            file_time = int(item.get('created_time', item.get('taken_at', time.time())))
             os.utime(file_path, (file_time, file_time))
 
 def main():
