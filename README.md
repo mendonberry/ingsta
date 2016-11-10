@@ -49,23 +49,13 @@ $ source venv/bin/activate
 $ python setup.py develop
 ```
 
-Develop
--------
-
-Clone the repo and create a virtualenv 
-```bash
-$ virtualenv venv
-$ source venv/bin/activate
-$ python setup.py develop
-```
-
 Running Tests
 -------------
 
 ```bash
 $ python setup.py test
 
-or just 
+# or just 
 
 $ nosetests
 ```
