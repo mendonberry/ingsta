@@ -26,7 +26,7 @@ class InstagramScraper(object):
 
     """InstagramScraper scrapes and downloads an instagram user's photos and videos"""
 
-    def __init__(self, username, login_user=None, login_pass=None, dst=None):
+    def __init__(self, username, login_user=None, login_pass=None, dst=None, quiet=False):
         self.username = username
         self.login_user = login_user
         self.login_pass = login_pass
@@ -45,6 +45,9 @@ class InstagramScraper(object):
             else:
                 # Target dir exists as a file, or a different error
                 raise
+
+        # Controls the graphical output of tqdm
+        self.quiet = quiet
 
         self.session = requests.Session()
         self.cookies = None
@@ -87,19 +90,19 @@ class InstagramScraper(object):
 
         if self.logged_in:
             # Downloads the user's profile pic and stories and sends it to the executor.
-            for item in tqdm.tqdm(self.get_user_stories(), desc='Searching for stories', unit=" media"):
+            for item in tqdm.tqdm(self.get_user_stories(), desc='Searching for stories', unit=" media", disable=self.quiet):
                 future = executor.submit(self.download, item, self.dst)
                 future_to_item[future] = item
 
         # Crawls the media and sends it to the executor.
-        for item in tqdm.tqdm(self.media_gen(), desc='Searching for posts', unit=' media'):
+        for item in tqdm.tqdm(self.media_gen(), desc='Searching for posts', unit=' media', disable=self.quiet):
             future = executor.submit(self.download, item, self.dst)
             future_to_item[future] = item
 
         # Displays the progress bar of completed downloads. Might not even pop up if all media is downloaded while
         # the above loop finishes.
         for future in tqdm.tqdm(concurrent.futures.as_completed(future_to_item), total=len(future_to_item),
-                                desc='Downloading'):
+                                desc='Downloading', disable=self.quiet):
             item = future_to_item[future]
 
             if future.exception() is not None:
