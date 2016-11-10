@@ -133,8 +133,8 @@ class InstagramScraper(object):
     def fetch_stories(self, user_id):
         """Fetches the user's stories"""
         resp = self.session.get(STORIES_URL.format(user_id), headers={
-            'user-agent' : 'Instagram 9.5.2 (iPhone7,2; iPhone OS 9_3_3; en_US; en-US; scale=2.00; 750x1334) AppleWebKit/420+',
-            'cookie'     : 'ds_user_id=' + self.cookies['ds_user_id'] + '; sessionid=' + self.cookies['sessionid'] + ';'
+            'user-agent' : STORIES_UA,
+            'cookie'     : STORIES_COOKIE.format(self.cookies['ds_user_id'], self.cookies['sessionid'])
         })
 
         retval = json.loads(resp.text)
