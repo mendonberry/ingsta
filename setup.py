@@ -10,8 +10,11 @@ setup(name='instagram-scraper',
       packages=find_packages(exclude=['tests*']),
       install_requires=["requests>=1.0.4",
                         "futures==2.2.0",
-                        "tqdm>=3.8.0"],
+                        "tqdm>=3.8.0",
+                        "requests_mock",
+                        "nose"],
       entry_points = {
         'console_scripts': ['instagram-scraper=instagram_scraper.app:main'],
       },
+      test_suite = 'nose.collector',
       zip_safe=False)
