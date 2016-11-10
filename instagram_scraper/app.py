@@ -47,7 +47,7 @@ class InstagramScraper:
 
         try:
             os.makedirs(self.dst)
-        except OSError, e:
+        except OSError as e:
             if e.errno == errno.EEXIST and os.path.isdir(self.dst):
                 # Directory already exists
                 pass
@@ -76,7 +76,7 @@ class InstagramScraper:
         if login.status_code == 200 and json.loads(login.text)['authenticated']:
             self.logged_in = True
         else:
-            raise ValueError('Login failed for %s' % self.login_user)
+            raise ValueError('Login failed for {0}'.format(self.login_user))
 
     def logout(self):
         if self.logged_in:
@@ -102,7 +102,7 @@ class InstagramScraper:
             item = self.future_to_item[future]
 
             if future.exception() is not None:
-                print '%r generated an exception: %s' % (item['id'], future.exception())
+                print('{0} generated an exception: {1}'.format(item['id'], future.exception()))
 
         self.logout()
 
@@ -135,12 +135,12 @@ class InstagramScraper:
 
             if not media['items']:
                 self.logout()
-                raise ValueError('User %s is private' % self.username)
+                raise ValueError('User {0} is private'.format(self.username))
 
             return media
         else:
             self.logout()
-            raise ValueError('User %s does not exist' % self.username)
+            raise ValueError('User {0} does not exist'.format(self.username))
 
     def download(self, item, save_dir='./'):
         """Downloads the media file"""

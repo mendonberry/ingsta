@@ -13,7 +13,7 @@ To install the project dependencies:
 $ python setup.py install
 ```
 
-If you don't want to install it globally, you can use virtualenv
+If you don't want to install it globally, you can use virtualenv:
 ```bash
 $ virtualenv venv
 $ source venv/bin/activate
@@ -37,7 +37,17 @@ To scrape a private user's media when you are an approved follower:
 $ instagram-scraper <username> -u <your username> -p <your password>
 ```
 
-By default media will be download to *`<current working directory>/<username>`*
+By default, media will be download to *`<current working directory>/<username>`*
+
+Develop
+-------
+
+Clone the repo and create a virtualenv 
+```bash
+$ virtualenv venv
+$ source venv/bin/activate
+$ python setup.py develop
+```
 
 Develop
 -------
