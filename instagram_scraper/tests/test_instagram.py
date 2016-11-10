@@ -4,6 +4,7 @@ import shutil
 import tempfile
 import requests_mock
 from instagram_scraper import InstagramScraper
+from instagram_scraper.constants import *
 
 class InstagramTests(unittest.TestCase):
 
@@ -26,8 +27,8 @@ class InstagramTests(unittest.TestCase):
 
     def test_scrape(self):
         with requests_mock.Mocker() as m:
-                m.get(self.scraper.media_url, text=self.response_first_page)
-                m.get(self.scraper.media_url + '?&max_id=' + self.max_id,
+                m.get(MEDIA_URL.format(self.scraper.username), text=self.response_first_page)
+                m.get(MEDIA_URL.format(self.scraper.username) + '?&max_id=' + self.max_id,
                        text=self.response_second_page)
                 m.get('https://fake-url.com/photo1.jpg', text="image1")
                 m.get('https://fake-url.com/photo2.jpg', text="image2")
