@@ -88,11 +88,24 @@ class InstagramScraper(object):
         executor = concurrent.futures.ThreadPoolExecutor(max_workers=10)
         future_to_item = {}
 
-        if self.logged_in:
-            # Downloads the user's profile pic and stories and sends it to the executor.
-            for item in tqdm.tqdm(self.get_user_stories(), desc='Searching for stories', unit=" media", disable=self.quiet):
+        # Get the user metadata.
+        user = self.fetch_user()
+
+        if user:
+            # Download the profile pic if not the default.
+            if '11906329_960233084022564_1448528159' not in user['profile_pic_url_hd']:
+                item = {'url': re.sub(r'/s\d{3,}x\d{3,}/', '/', user['profile_pic_url_hd'])}
                 future = executor.submit(self.download, item, self.dst)
                 future_to_item[future] = item
+
+            if self.logged_in:
+                # Get the user's stories.
+                stories = self.fetch_stories(user['id'])
+
+                # Downloads the user's stories and sends it to the executor.
+                for item in tqdm.tqdm(stories, desc='Searching for stories', unit=" media", disable=self.quiet):
+                    future = executor.submit(self.download, item, self.dst)
+                    future_to_item[future] = item
 
         # Crawls the media and sends it to the executor.
         for item in tqdm.tqdm(self.media_gen(), desc='Searching for posts', unit=' media', disable=self.quiet):
@@ -109,21 +122,6 @@ class InstagramScraper(object):
                 print('{0} generated an exception: {1}'.format(item['id'], future.exception()))
 
         self.logout()
-
-    def get_user_stories(self):
-        """Gets the user's stories"""
-        user = self.fetch_user()
-        items = []
-
-        if user:
-            # Download the profile pic if not the default
-            if '11906329_960233084022564_1448528159' not in user['profile_pic_url_hd']:
-                self.download({'url': re.sub(r'/s\d{3,}x\d{3,}/', '/', user['profile_pic_url_hd'])}, self.dst)
-
-            # Get the stories
-            items += self.fetch_stories(user['id'])
-
-        return items
 
     def fetch_user(self):
         """Fetches the user's metadata"""
