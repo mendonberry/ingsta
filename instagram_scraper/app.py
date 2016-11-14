@@ -1,18 +1,15 @@
 #!/usr/bin/python
 # -*- coding: utf-8 -*-
 
-"""
-Usage:
-python app.py <username>
-"""
 import argparse
 import errno
 import json
+import logging.config
 import os
 import re
 import time
-import traceback
 import warnings
+import sys
 
 import concurrent.futures
 import requests
@@ -20,34 +17,23 @@ import tqdm
 
 from instagram_scraper.constants import *
 
+logging.config.fileConfig(os.path.dirname(os.path.realpath(__file__)) + '/logging.ini')
 warnings.filterwarnings('ignore')
 
 class InstagramScraper(object):
 
     """InstagramScraper scrapes and downloads an instagram user's photos and videos"""
 
-    def __init__(self, username, login_user=None, login_pass=None, dst=None, quiet=False):
-        self.username = username
+    def __init__(self, usernames, login_user=None, login_pass=None, dst=None, quiet=False):
+        self.usernames = usernames if isinstance(usernames, list) else [usernames]
         self.login_user = login_user
         self.login_pass = login_pass
-
-        if dst is not None:
-            self.dst = dst
-        else:
-            self.dst = './' + self.username
-
-        try:
-            os.makedirs(self.dst)
-        except OSError as err:
-            if err.errno == errno.EEXIST and os.path.isdir(self.dst):
-                # Directory already exists
-                pass
-            else:
-                # Target dir exists as a file, or a different error
-                raise
+        self.dst = './' if dst is None else dst
 
         # Controls the graphical output of tqdm
         self.quiet = quiet
+
+        self.logger = logging.getLogger('root')
 
         self.session = requests.Session()
         self.cookies = None
@@ -71,7 +57,8 @@ class InstagramScraper(object):
         if login.status_code == 200 and json.loads(login.text)['authenticated']:
             self.logged_in = True
         else:
-            raise ValueError('Login failed for {0}'.format(self.login_user))
+            self.logger.exception('Login failed for ' + self.login_user)
+            raise ValueError('Login failed for ' + self.login_user)
 
     def logout(self):
         """Logs out of instagram"""
@@ -81,51 +68,77 @@ class InstagramScraper(object):
                 self.session.post(LOGOUT_URL, data=logout_data)
                 self.logged_in = False
             except requests.exceptions.RequestException:
-                traceback.print_exc()
+                self.logger.warning('Failed to log out ' + self.login_user)
+
+    def make_dst_dir(self, username):
+        '''Creates the destination directory'''
+        if self.dst == './':
+            dst = './' + username
+        else:
+            dst = self.dst
+
+        try:
+            os.makedirs(dst)
+        except OSError as err:
+            if err.errno == errno.EEXIST and os.path.isdir(dst):
+                # Directory already exists
+                pass
+            else:
+                # Target dir exists as a file, or a different error
+                raise
+
+        return dst
 
     def scrape(self):
         """Crawls through and downloads user's media"""
         executor = concurrent.futures.ThreadPoolExecutor(max_workers=10)
-        future_to_item = {}
 
-        # Get the user metadata.
-        user = self.fetch_user()
+        for username in self.usernames:
+            future_to_item = {}
 
-        if user:
-            # Download the profile pic if not the default.
-            if '11906329_960233084022564_1448528159' not in user['profile_pic_url_hd']:
-                item = {'url': re.sub(r'/s\d{3,}x\d{3,}/', '/', user['profile_pic_url_hd'])}
-                future = executor.submit(self.download, item, self.dst)
+            # Make the destination dir.
+            dst = self.make_dst_dir(username)
+
+            # Get the user metadata.
+            user = self.fetch_user(username)
+
+            if user:
+                # Download the profile pic if not the default.
+                if '11906329_960233084022564_1448528159' not in user['profile_pic_url_hd']:                    
+                    item = {'url': re.sub(r'/s\d{3,}x\d{3,}/', '/', user['profile_pic_url_hd'])}
+                    for item in tqdm.tqdm([item], desc='Searching {0} for profile pic'.format(username), unit=" images", ncols=0, disable=self.quiet):
+                        future = executor.submit(self.download, item, dst)
+                        future_to_item[future] = item
+
+                if self.logged_in:
+                    # Get the user's stories.
+                    stories = self.fetch_stories(user['id'])
+
+                    # Downloads the user's stories and sends it to the executor.
+                    for item in tqdm.tqdm(stories, desc='Searching {0} for stories'.format(username), unit=" media", disable=self.quiet):
+                        future = executor.submit(self.download, item, dst)
+                        future_to_item[future] = item
+
+            # Crawls the media and sends it to the executor.
+            for item in tqdm.tqdm(self.media_gen(username), desc='Searching {0} for posts'.format(username), 
+                                unit=' media', disable=self.quiet):
+                future = executor.submit(self.download, item, dst)
                 future_to_item[future] = item
 
-            if self.logged_in:
-                # Get the user's stories.
-                stories = self.fetch_stories(user['id'])
-
-                # Downloads the user's stories and sends it to the executor.
-                for item in tqdm.tqdm(stories, desc='Searching for stories', unit=" media", disable=self.quiet):
-                    future = executor.submit(self.download, item, self.dst)
-                    future_to_item[future] = item
-
-        # Crawls the media and sends it to the executor.
-        for item in tqdm.tqdm(self.media_gen(), desc='Searching for posts', unit=' media', disable=self.quiet):
-            future = executor.submit(self.download, item, self.dst)
-            future_to_item[future] = item
-
-        # Displays the progress bar of completed downloads. Might not even pop up if all media is downloaded while
-        # the above loop finishes.
-        for future in tqdm.tqdm(concurrent.futures.as_completed(future_to_item), total=len(future_to_item),
+            # Displays the progress bar of completed downloads. Might not even pop up if all media is downloaded while
+            # the above loop finishes.
+            for future in tqdm.tqdm(concurrent.futures.as_completed(future_to_item), total=len(future_to_item),
                                 desc='Downloading', disable=self.quiet):
-            item = future_to_item[future]
+                item = future_to_item[future]
 
-            if future.exception() is not None:
-                print('{0} generated an exception: {1}'.format(item['id'], future.exception()))
+                if future.exception() is not None:
+                    self.logger.warning('Media id {0} at {1} generated an exception: {2}'.format(item['id'], item['url'], future.exception()))
 
         self.logout()
 
-    def fetch_user(self):
+    def fetch_user(self, username):
         """Fetches the user's metadata"""
-        resp = self.session.get(BASE_URL + self.username)
+        resp = self.session.get(BASE_URL + username)
 
         if resp.status_code == 200 and '_sharedData' in resp.text:
             shared_data = resp.text.split("window._sharedData = ")[1].split(";</script>")[0]
@@ -144,22 +157,25 @@ class InstagramScraper(object):
             return [self.set_story_url(item) for item in retval['items']]
         return []
 
-    def media_gen(self):
+    def media_gen(self, username):
         """Generator of all user's media"""
-        media = self.fetch_media_json(max_id=None)
+        try:
+            media = self.fetch_media_json(username, max_id=None)
 
-        while True:
-            for item in media['items']:
-                yield item
-            if media.get('more_available'):
-                max_id = media['items'][-1]['id']
-                media = self.fetch_media_json(max_id)
-            else:
-                return
+            while True:
+                for item in media['items']:
+                    yield item
+                if media.get('more_available'):
+                    max_id = media['items'][-1]['id']
+                    media = self.fetch_media_json(username, max_id)
+                else:
+                    return
+        except ValueError:
+            self.logger.exception('Failed to get media for ' + username)
 
-    def fetch_media_json(self, max_id):
+    def fetch_media_json(self, username, max_id):
         """Fetches the user's media metadata"""
-        url = MEDIA_URL.format(self.username)
+        url = MEDIA_URL.format(username)
 
         if max_id is not None:
             url += '?&max_id=' + max_id
@@ -170,14 +186,12 @@ class InstagramScraper(object):
             media = json.loads(resp.text)
 
             if not media['items']:
-                self.logout()
-                raise ValueError('User {0} is private'.format(self.username))
+                raise ValueError('User {0} is private'.format(username))
 
             media['items'] = [self.set_media_url(item) for item in media['items']]
             return media
         else:
-            self.logout()
-            raise ValueError('User {0} does not exist'.format(self.username))
+            raise ValueError('User {0} does not exist'.format(username))
 
     def set_media_url(self, item):
         """Sets the media url"""
@@ -197,26 +211,47 @@ class InstagramScraper(object):
         file_path = os.path.join(save_dir, base_name)
 
         if not os.path.isfile(file_path):
-            with open(file_path, 'wb') as file:
+            with open(file_path, 'wb') as media_file:
                 try:
                     content = self.session.get(item['url']).content
                 except requests.exceptions.ConnectionError:
                     time.sleep(5)
                     content = requests.get(item['url']).content
 
-                file.write(content)
+                media_file.write(content)
 
             file_time = int(item.get('created_time', item.get('taken_at', time.time())))
             os.utime(file_path, (file_time, file_time))
+
+    @staticmethod
+    def parse_file_usernames(usernames_file):
+        '''Parses a file containing a list of usernames.'''
+        users = []
+
+        try:
+            with open(usernames_file) as user_file:
+                for line in user_file.readlines():
+                    # Find all usernames delimited by ,; or whitespace
+                    users += re.findall(r'[^,;\s]+', line)
+        except IOError as err:
+            raise ValueError('File not found ' + err)
+
+        return users
+
+    @staticmethod
+    def parse_str_usernames(usernames_str):
+        '''Parse the username input as a delimited string of users.'''
+        return re.findall(r'[^,;\s]+', usernames_str)
 
 def main():
     parser = argparse.ArgumentParser(
         description="instagram-scraper scrapes and downloads an instagram user's photos and videos.")
 
-    parser.add_argument('username', help='Instagram user to scrape')
+    parser.add_argument('username', help='Instagram user(s) to scrape', nargs='*')
     parser.add_argument('--destination', '-d', help='Download destination')
     parser.add_argument('--login_user', '-u', help='Instagram login user')
     parser.add_argument('--login_pass', '-p', help='Instagram login password')
+    parser.add_argument('--filename', '-f', help='Path to a file containing a list of users to scrape')
 
     args = parser.parse_args()
 
@@ -224,9 +259,22 @@ def main():
         parser.print_help()
         raise ValueError('Must provide login user AND password')
 
-    scraper = InstagramScraper(args.username, args.login_user, args.login_pass, args.destination)
+    if not args.username and args.filename is None:
+        parser.print_help()
+        raise ValueError('Must provide username(s) OR a file containing a list of username(s)')
+    elif args.username and args.filename:
+        parser.print_help()
+        raise ValueError('Must provide only one of the following: username(s) OR a filename containing username(s)')
+
+    usernames = []
+
+    if args.filename:
+        usernames = InstagramScraper.parse_file_usernames(args.filename)
+    else:
+        usernames = InstagramScraper.parse_str_usernames(','.join(args.username))
+
+    scraper = InstagramScraper(usernames, args.login_user, args.login_pass, args.destination)
     scraper.scrape()
 
 if __name__ == '__main__':
     main()
-

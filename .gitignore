@@ -2,3 +2,7 @@ venv
 *.pyc
 wadl.xml
 *.egg-info
+*.log
+.eggs
+build
+dist
