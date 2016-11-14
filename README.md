@@ -27,17 +27,35 @@ To scrape a public user's media:
 $ instagram-scraper <username>             
 ```
 
+To specify multiple users, pass a delimited list of users:
+```bash
+$ instagram-scraper username1,username2,username3           
+```
+
+You can also supply a file containing a list of usernames:
+```bash
+$ instagram-scraper ig_users.txt           
+```
+```
+# ig_users.txt
+username1
+username2
+username3
+# and so on...
+```
+The usernames may be separated by newlines, commas, semicolons, or whitespace.
+
 To specify the download destination:
 ```bash
 $ instagram-scraper <username> -d /path/to/destination
 ```
+By default, media will be download to *`<current working directory>/<username>`*
 
 To scrape a private user's media when you are an approved follower:
 ```bash
 $ instagram-scraper <username> -u <your username> -p <your password>
 ```
 
-By default, media will be download to *`<current working directory>/<username>`*
 
 Develop
 -------
