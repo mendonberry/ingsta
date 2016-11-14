@@ -34,10 +34,11 @@ $ instagram-scraper username1,username2,username3
 
 You can also supply a file containing a list of usernames:
 ```bash
-$ instagram-scraper ig_users.txt           
+$ instagram-scraper -f ig_users.txt           
 ```
 ```
 # ig_users.txt
+
 username1
 username2
 username3
