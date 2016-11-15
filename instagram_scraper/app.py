@@ -9,7 +9,6 @@ import os
 import re
 import time
 import warnings
-import sys
 
 import concurrent.futures
 import requests
@@ -17,7 +16,6 @@ import tqdm
 
 from instagram_scraper.constants import *
 
-logging.config.fileConfig(os.path.dirname(os.path.realpath(__file__)) + '/logging.ini')
 warnings.filterwarnings('ignore')
 
 class InstagramScraper(object):
@@ -33,7 +31,8 @@ class InstagramScraper(object):
         # Controls the graphical output of tqdm
         self.quiet = quiet
 
-        self.logger = logging.getLogger('root')
+        # Set up a file logger.
+        self.logger = InstagramScraper.get_logger(level=logging.DEBUG)
 
         self.session = requests.Session()
         self.cookies = None
@@ -222,6 +221,21 @@ class InstagramScraper(object):
 
             file_time = int(item.get('created_time', item.get('taken_at', time.time())))
             os.utime(file_path, (file_time, file_time))
+
+    @staticmethod
+    def get_logger(level=logging.WARNING, log_file='instagram-scraper.log'):
+        '''Returns a file logger.'''
+        logger = logging.getLogger(__name__)
+        logger.setLevel(logging.NOTSET)
+
+        handler = logging.FileHandler(log_file, 'w')
+        handler.setLevel(level)
+
+        formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+        handler.setFormatter(formatter)
+
+        logger.addHandler(handler)
+        return logger
 
     @staticmethod
     def parse_file_usernames(usernames_file):
