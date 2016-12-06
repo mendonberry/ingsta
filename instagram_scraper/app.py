@@ -103,7 +103,7 @@ class InstagramScraper(object):
 
             if user:
                 # Download the profile pic if not the default.
-                if '11906329_960233084022564_1448528159' not in user['profile_pic_url_hd']:                    
+                if 'profile_pic_url_hd' in user and '11906329_960233084022564_1448528159' not in user['profile_pic_url_hd']:
                     item = {'url': re.sub(r'/s\d{3,}x\d{3,}/', '/', user['profile_pic_url_hd'])}
                     for item in tqdm.tqdm([item], desc='Searching {0} for profile pic'.format(username), unit=" images", ncols=0, disable=self.quiet):
                         future = executor.submit(self.download, item, dst)
