@@ -22,10 +22,11 @@ class InstagramScraper(object):
 
     """InstagramScraper scrapes and downloads an instagram user's photos and videos"""
 
-    def __init__(self, usernames, login_user=None, login_pass=None, dst=None, quiet=False):
+    def __init__(self, usernames, login_user=None, login_pass=None, dst=None, quiet=False, max=0):
         self.usernames = usernames if isinstance(usernames, list) else [usernames]
         self.login_user = login_user
         self.login_pass = login_pass
+        self.max = max
         self.dst = './' if dst is None else dst
 
         # Controls the graphical output of tqdm
@@ -114,15 +115,25 @@ class InstagramScraper(object):
                     stories = self.fetch_stories(user['id'])
 
                     # Downloads the user's stories and sends it to the executor.
+                    iter = 0
                     for item in tqdm.tqdm(stories, desc='Searching {0} for stories'.format(username), unit=" media", disable=self.quiet):
-                        future = executor.submit(self.download, item, dst)
-                        future_to_item[future] = item
+                        iter = iter + 1
+                        if ( self.max != 0 and iter >= self.max ):
+                            break
+                        else:
+                            future = executor.submit(self.download, item, dst)
+                            future_to_item[future] = item
 
             # Crawls the media and sends it to the executor.
+            iter = 0
             for item in tqdm.tqdm(self.media_gen(username), desc='Searching {0} for posts'.format(username), 
                                 unit=' media', disable=self.quiet):
-                future = executor.submit(self.download, item, dst)
-                future_to_item[future] = item
+                iter = iter + 1
+                if ( self.max != 0 and iter >= self.max ):
+                    break
+                else:
+                    future = executor.submit(self.download, item, dst)
+                    future_to_item[future] = item
 
             # Displays the progress bar of completed downloads. Might not even pop up if all media is downloaded while
             # the above loop finishes.
@@ -258,6 +269,7 @@ class InstagramScraper(object):
         return re.findall(r'[^,;\s]+', usernames_str)
 
 def main():
+    max = 0
     parser = argparse.ArgumentParser(
         description="instagram-scraper scrapes and downloads an instagram user's photos and videos.")
 
@@ -266,6 +278,8 @@ def main():
     parser.add_argument('--login_user', '-u', help='Instagram login user')
     parser.add_argument('--login_pass', '-p', help='Instagram login password')
     parser.add_argument('--filename', '-f', help='Path to a file containing a list of users to scrape')
+    parser.add_argument('--quiet', '-q', action='store_true', help='Be quiet while scraping')
+    parser.add_argument('--maximum', '-m', type=int, default=0, help='Maximum number of items to scrape')
 
     args = parser.parse_args()
 
@@ -279,7 +293,6 @@ def main():
     elif args.username and args.filename:
         parser.print_help()
         raise ValueError('Must provide only one of the following: username(s) OR a filename containing username(s)')
-
     usernames = []
 
     if args.filename:
@@ -287,7 +300,7 @@ def main():
     else:
         usernames = InstagramScraper.parse_str_usernames(','.join(args.username))
 
-    scraper = InstagramScraper(usernames, args.login_user, args.login_pass, args.destination)
+    scraper = InstagramScraper(usernames, args.login_user, args.login_pass, args.destination, args.quiet, args.maximum )
     scraper.scrape()
 
 if __name__ == '__main__':
