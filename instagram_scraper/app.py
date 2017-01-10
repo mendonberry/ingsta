@@ -151,8 +151,11 @@ class InstagramScraper(object):
         resp = self.session.get(BASE_URL + username)
 
         if resp.status_code == 200 and '_sharedData' in resp.text:
-            shared_data = resp.text.split("window._sharedData = ")[1].split(";</script>")[0]
-            return json.loads(shared_data)['entry_data']['ProfilePage'][0]['user']
+            try:
+                shared_data = resp.text.split("window._sharedData = ")[1].split(";</script>")[0]
+                return json.loads(shared_data)['entry_data']['ProfilePage'][0]['user']
+            except (TypeError, KeyError, IndexError):
+                pass
 
     def fetch_stories(self, user_id):
         """Fetches the user's stories"""
