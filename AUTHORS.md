@@ -7,4 +7,5 @@ Authors
 - Jacob Lukose ([@jacoblukose](https://github.com/jacoblukose))
 - Nace Oroz ([@orkaa](https://github.com/orkaa))
 - Leif Sawyer ([@akhepcat](https://github.com/akhepcat))
+- Dave Bush ([@corymb](https://github.com/corymb))
 [home]: README.md
