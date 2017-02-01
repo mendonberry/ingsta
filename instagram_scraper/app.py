@@ -22,11 +22,12 @@ class InstagramScraper(object):
 
     """InstagramScraper scrapes and downloads an instagram user's photos and videos"""
 
-    def __init__(self, usernames, login_user=None, login_pass=None, dst=None, quiet=False, max=0):
+    def __init__(self, usernames, login_user=None, login_pass=None, dst=None, quiet=False, max=0, retain_username=False):
         self.usernames = usernames if isinstance(usernames, list) else [usernames]
         self.login_user = login_user
         self.login_pass = login_pass
         self.max = max
+        self.retain_username = retain_username
         self.dst = './' if dst is None else dst
 
         # Controls the graphical output of tqdm
@@ -75,7 +76,10 @@ class InstagramScraper(object):
         if self.dst == './':
             dst = './' + username
         else:
-            dst = self.dst
+            if self.retain_username:
+                dst = self.dst + '/' + username
+            else:
+                dst = self.dst
 
         try:
             os.makedirs(dst)
@@ -126,7 +130,7 @@ class InstagramScraper(object):
 
             # Crawls the media and sends it to the executor.
             iter = 0
-            for item in tqdm.tqdm(self.media_gen(username), desc='Searching {0} for posts'.format(username), 
+            for item in tqdm.tqdm(self.media_gen(username), desc='Searching {0} for posts'.format(username),
                                 unit=' media', disable=self.quiet):
                 iter = iter + 1
                 if ( self.max != 0 and iter >= self.max ):
@@ -283,6 +287,8 @@ def main():
     parser.add_argument('--filename', '-f', help='Path to a file containing a list of users to scrape')
     parser.add_argument('--quiet', '-q', action='store_true', help='Be quiet while scraping')
     parser.add_argument('--maximum', '-m', type=int, default=0, help='Maximum number of items to scrape')
+    parser.add_argument('--retain_username', '-n', action='store_true',
+                        help='Creates username subdirectory when destination flag is set')
 
     args = parser.parse_args()
 
@@ -303,7 +309,7 @@ def main():
     else:
         usernames = InstagramScraper.parse_str_usernames(','.join(args.username))
 
-    scraper = InstagramScraper(usernames, args.login_user, args.login_pass, args.destination, args.quiet, args.maximum )
+    scraper = InstagramScraper(usernames, args.login_user, args.login_pass, args.destination, args.quiet, args.maximum, args.retain_username)
     scraper.scrape()
 
 if __name__ == '__main__':
