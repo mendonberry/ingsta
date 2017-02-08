@@ -2,7 +2,7 @@
 
 Instagram Scraper
 =================
-[![PyPI](https://img.shields.io/pypi/v/nine.svg)](https://pypi.python.org/pypi/instagram-scraper) [![Build Status](https://travis-ci.org/rarcega/instagram-scraper.svg?branch=master)](https://travis-ci.org/rarcega/instagram-scraper)
+[![PyPI](https://img.shields.io/pypi/v/instagram-scraper.svg)](https://pypi.python.org/pypi/instagram-scraper) [![Build Status](https://travis-ci.org/rarcega/instagram-scraper.svg?branch=master)](https://travis-ci.org/rarcega/instagram-scraper)
 
 instagram-scraper is a command-line application written in Python that scrapes and downloads an instagram user's photos and videos. Use responsibly.
 
@@ -11,6 +11,11 @@ Install
 To install instagram-scraper:
 ```bash
 $ pip install instagram-scraper
+```
+
+To update instagram-scraper:
+```bash
+$ pip install instagram-scraper --upgrade
 ```
 
 Usage
@@ -35,6 +40,7 @@ $ instagram-scraper -f ig_users.txt
 username1
 username2
 username3
+
 # and so on...
 ```
 The usernames may be separated by newlines, commas, semicolons, or whitespace.
