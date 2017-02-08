@@ -215,6 +215,8 @@ class InstagramScraper(object):
         item['url'] = item[item['type'] + 's']['standard_resolution']['url'].split('?')[0]
         # remove dimensions to get largest image
         item['url'] = re.sub(r'/s\d{3,}x\d{3,}/', '/', item['url'])
+        # get non-square image if one exists
+        item['url'] = re.sub(r'/c\d{1,}.\d{1,}.\d{1,}.\d{1,}/', '/', item['url'])
         return item
 
     def set_story_url(self, item):
