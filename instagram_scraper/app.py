@@ -146,7 +146,6 @@ class InstagramScraper(object):
                 item = future_to_item[future]
 
                 if future.exception() is not None:
-                    print json.dumps(item, indent=2)
                     self.logger.warning('Media id {0} at {1} generated an exception: {2}'.format(item['id'], item['urls'], future.exception()))
 
         self.logout()
