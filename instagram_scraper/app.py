@@ -109,7 +109,7 @@ class InstagramScraper(object):
             if user:
                 # Download the profile pic if not the default.
                 if 'profile_pic_url_hd' in user and '11906329_960233084022564_1448528159' not in user['profile_pic_url_hd']:
-                    item = {'url': re.sub(r'/s\d{3,}x\d{3,}/', '/', user['profile_pic_url_hd'])}
+                    item = {'urls': [re.sub(r'/s\d{3,}x\d{3,}/', '/', user['profile_pic_url_hd'])]}
                     for item in tqdm.tqdm([item], desc='Searching {0} for profile pic'.format(username), unit=" images", ncols=0, disable=self.quiet):
                         future = executor.submit(self.download, item, dst)
                         future_to_item[future] = item
@@ -146,7 +146,8 @@ class InstagramScraper(object):
                 item = future_to_item[future]
 
                 if future.exception() is not None:
-                    self.logger.warning('Media id {0} at {1} generated an exception: {2}'.format(item['id'], item['url'], future.exception()))
+                    print json.dumps(item, indent=2)
+                    self.logger.warning('Media id {0} at {1} generated an exception: {2}'.format(item['id'], item['urls'], future.exception()))
 
         self.logout()
 
@@ -212,35 +213,48 @@ class InstagramScraper(object):
 
     def set_media_url(self, item):
         """Sets the media url"""
-        item['url'] = item[item['type'] + 's']['standard_resolution']['url'].split('?')[0]
-        # remove dimensions to get largest image
-        item['url'] = re.sub(r'/s\d{3,}x\d{3,}/', '/', item['url'])
-        # get non-square image if one exists
-        item['url'] = re.sub(r'/c\d{1,}.\d{1,}.\d{1,}.\d{1,}/', '/', item['url'])
+        urls = []
+        if item['type'] == 'carousel':
+            for carousel_item in item['carousel_media']:
+                url = carousel_item[carousel_item['type'] + 's']['standard_resolution']['url'].split('?')[0]
+                urls.append(self.get_original_image(url))
+        else:
+            url = item[item['type'] + 's']['standard_resolution']['url'].split('?')[0]
+            urls.append(self.get_original_image(url))
+
+        item['urls'] = urls
         return item
+
+    def get_original_image(self, url):
+        # remove dimensions to get largest image
+        url = re.sub(r'/s\d{3,}x\d{3,}/', '/', url)
+        # get non-square image if one exists
+        url = re.sub(r'/c\d{1,}.\d{1,}.\d{1,}.\d{1,}/', '/', url)
+        return url
 
     def set_story_url(self, item):
         """Sets the story url"""
-        item['url'] = item['image_versions2']['candidates'][0]['url'].split('?')[0]
+        item['urls'] = [item['image_versions2']['candidates'][0]['url'].split('?')[0]]
         return item
 
     def download(self, item, save_dir='./'):
         """Downloads the media file"""
-        base_name = item['url'].split('/')[-1]
-        file_path = os.path.join(save_dir, base_name)
+        for url in item['urls']:
+            base_name = url.split('/')[-1]
+            file_path = os.path.join(save_dir, base_name)
 
-        if not os.path.isfile(file_path):
-            with open(file_path, 'wb') as media_file:
-                try:
-                    content = self.session.get(item['url']).content
-                except requests.exceptions.ConnectionError:
-                    time.sleep(5)
-                    content = requests.get(item['url']).content
+            if not os.path.isfile(file_path):
+                with open(file_path, 'wb') as media_file:
+                    try:
+                        content = self.session.get(url).content
+                    except requests.exceptions.ConnectionError:
+                        time.sleep(5)
+                        content = requests.get(url).content
 
-                media_file.write(content)
+                    media_file.write(content)
 
-            file_time = int(item.get('created_time', item.get('taken_at', time.time())))
-            os.utime(file_path, (file_time, file_time))
+                file_time = int(item.get('created_time', item.get('taken_at', time.time())))
+                os.utime(file_path, (file_time, file_time))
 
     @staticmethod
     def get_logger(level=logging.WARNING, log_file='instagram-scraper.log'):
