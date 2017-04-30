@@ -25,6 +25,11 @@ To scrape a public user's media:
 $ instagram-scraper <username>             
 ```
 
+To scrape a private user's media when you are an approved follower:
+```bash
+$ instagram-scraper <username> -u <your username> -p <your password>
+```
+
 To specify multiple users, pass a delimited list of users:
 ```bash
 $ instagram-scraper username1,username2,username3           
@@ -45,24 +50,36 @@ username3
 ```
 The usernames may be separated by newlines, commas, semicolons, or whitespace.
 
-To specify the download destination:
+
+Options
+-------
+
 ```bash
-$ instagram-scraper <username> -d /path/to/destination
+--help -h           Show help message and exit.
+
+--login_user  -u    Instagram login user.
+
+--login_pass  -p    Instagram login password.
+
+--filename    -f    Path to a file containing a list of users to scrape.
+
+--destination -d    Specify the download destination. By default, media will 
+                    be downloaded to <current working directory>/<username>.
+
+--retain_username -n  Creates a username subdirectory when the destination flag is
+                      set.
+
+--media_types -t    Specify media types to scrape. Enter as space separated values. 
+                    Valid values are image, video, and story.
+
+--quiet       -q    Be quiet while scraping.
+
+--maximum     -m    Maximum number of items to scrape.
+
+--media_metadata    Saves the media metadata associated with the user's posts to 
+                    <destination>/<username>.json.
+
 ```
-By default, media will be download to *`<current working directory>/<username>`*
-
-To scrape a private user's media when you are an approved follower:
-```bash
-$ instagram-scraper <username> -u <your username> -p <your password>
-```
-
-To get the media metadata associated with the user's posts:
-```bash
-$ instagram-scraper <username> --media_metadata
-```
-`<username>.json` will be downloaded to your destination directory.
-
-
 
 Develop
 -------

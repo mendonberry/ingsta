@@ -102,13 +102,14 @@ class InstagramScraper(object):
 
             if user:
                 # Download the profile pic if not the default.
-                if 'profile_pic_url_hd' in user and '11906329_960233084022564_1448528159' not in user['profile_pic_url_hd']:
+                if 'image' in self.media_types and 'profile_pic_url_hd' in user \
+                        and '11906329_960233084022564_1448528159' not in user['profile_pic_url_hd']:
                     item = {'urls': [re.sub(r'/s\d{3,}x\d{3,}/', '/', user['profile_pic_url_hd'])]}
                     for item in tqdm.tqdm([item], desc='Searching {0} for profile pic'.format(username), unit=" images", ncols=0, disable=self.quiet):
                         future = executor.submit(self.download, item, dst)
                         future_to_item[future] = item
 
-                if self.logged_in:
+                if self.logged_in and 'story' in self.media_types:
                     # Get the user's stories.
                     stories = self.fetch_stories(user['id'])
 
@@ -178,7 +179,10 @@ class InstagramScraper(object):
 
             while True:
                 for item in media['items']:
-                    yield item
+                    if self.in_media_types(item):
+                        yield item
+                        if self.media_metadata:
+                            self.posts.append(item)
                 if media.get('more_available'):
                     max_id = media['items'][-1]['id']
                     media = self.fetch_media_json(username, max_id)
@@ -207,17 +211,23 @@ class InstagramScraper(object):
         else:
             raise ValueError('User {0} does not exist'.format(username))
 
+    def in_media_types(self, item):
+        if item['type'] == 'carousel':
+            for carousel_item in item['carousel_media']:
+                if carousel_item['type'] in self.media_types:
+                    return True
+        else:
+            return item['type'] in self.media_types
+
+        return False
+
     def augment_media_item(self, item):
         """Augments media item object with new properties"""
-        self.set_media_urls(item)
+        self.get_media_urls(item)
         self.extract_tags(item)
-
-        if self.media_metadata:
-            self.posts.append(item)
-            
         return item
 
-    def set_media_urls(self, item):
+    def get_media_urls(self, item):
         """Sets the media url"""
         urls = []
         if item['type'] == 'carousel':
@@ -271,8 +281,9 @@ class InstagramScraper(object):
 
     def save_media_metadata(self, dst='./'):
         """Saves the media metadata to a json file"""
-        with open(dst, 'wb') as f:
-            json.dump(self.posts, codecs.getwriter('utf-8')(f), indent=4, sort_keys=True, ensure_ascii=False)
+        if len(self.posts) > 0:
+            with open(dst, 'wb') as f:
+                json.dump(self.posts, codecs.getwriter('utf-8')(f), indent=4, sort_keys=True, ensure_ascii=False)
 
     @staticmethod
     def get_logger(level=logging.WARNING, log_file='instagram-scraper.log'):
@@ -323,6 +334,7 @@ def main():
     parser.add_argument('--retain_username', '-n', action='store_true',
                         help='Creates username subdirectory when destination flag is set')
     parser.add_argument('--media_metadata', action='store_true', help='Save media metadata to json file')
+    parser.add_argument('--media_types', '-t', nargs='+', default=['image', 'video', 'story'], help='Specify media types to scrape')
 
     args = parser.parse_args()
 
