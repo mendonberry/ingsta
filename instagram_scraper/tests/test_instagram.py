@@ -17,12 +17,25 @@ class InstagramTests(unittest.TestCase):
         self.response_second_page = open(os.path.join(fixtures_path,
                                                       'response_second_page.json')).read()
 
-        self.test_dir = tempfile.mkdtemp()
-
         # This is a max id of the last item in response_first_page.json.
         self.max_id = "1369793132326237681_50955533"
 
-        self.scraper = InstagramScraper("test", dst=self.test_dir, quiet=True)
+        self.test_dir = tempfile.mkdtemp()
+
+        print self.test_dir
+
+        args = {
+            'usernames': ['test'],
+            'destination': self.test_dir,
+            'login_user': None,
+            'login_pass': None,
+            'quiet': False,
+            'maximum': 0,
+            'retain_username': False,
+            'media_metadata': False
+        }
+
+        self.scraper = InstagramScraper(**args)
 
     def tearDown(self):
         shutil.rmtree(self.test_dir)
