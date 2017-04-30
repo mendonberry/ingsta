@@ -56,6 +56,13 @@ To scrape a private user's media when you are an approved follower:
 $ instagram-scraper <username> -u <your username> -p <your password>
 ```
 
+To get the media metadata associated with the user's posts:
+```bash
+$ instagram-scraper <username> --media_metadata
+```
+`<username>.json` will be downloaded to your destination directory.
+
+
 
 Develop
 -------
