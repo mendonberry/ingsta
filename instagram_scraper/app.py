@@ -338,7 +338,7 @@ def main():
         raise ValueError('Must provide only one of the following: username(s) OR a filename containing username(s)')
 
     if args.filename:
-        args.usernames = usernames = InstagramScraper.parse_file_usernames(args.filename)
+        args.usernames = InstagramScraper.parse_file_usernames(args.filename)
     else:
         args.usernames = InstagramScraper.parse_str_usernames(','.join(args.username))
 

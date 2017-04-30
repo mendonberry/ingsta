@@ -22,8 +22,6 @@ class InstagramTests(unittest.TestCase):
 
         self.test_dir = tempfile.mkdtemp()
 
-        print self.test_dir
-
         args = {
             'usernames': ['test'],
             'destination': self.test_dir,
