@@ -51,10 +51,10 @@ username3
 The usernames may be separated by newlines, commas, semicolons, or whitespace.
 
 
-Options
+OPTIONS
 -------
 
-```bash
+```
 --help -h           Show help message and exit.
 
 --login_user  -u    Instagram login user.
