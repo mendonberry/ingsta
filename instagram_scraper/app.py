@@ -4,6 +4,7 @@
 import argparse
 import codecs
 import errno
+import glob
 import json
 import logging.config
 import os
@@ -33,6 +34,7 @@ class InstagramScraper(object):
         self.session = requests.Session()
         self.cookies = None
         self.logged_in = False
+        self.last_scraped_filemtime = 0
 
         if self.login_user and self.login_pass:
             self.login()
@@ -80,12 +82,28 @@ class InstagramScraper(object):
         except OSError as err:
             if err.errno == errno.EEXIST and os.path.isdir(dst):
                 # Directory already exists
+                self.get_last_scraped_filemtime(dst)
                 pass
             else:
                 # Target dir exists as a file, or a different error
                 raise
 
         return dst
+
+    def get_last_scraped_filemtime(self, dst):
+        list_of_files = []
+        file_types = ('*.jpg', '*.mp4')
+
+        for type in file_types:
+            list_of_files.extend(glob.glob(dst + '/' + type))
+
+        if list_of_files:
+            latest_file = max(list_of_files, key=os.path.getmtime)
+            self.last_scraped_filemtime = int(os.path.getmtime(latest_file))
+
+    def is_new_media(self, item):
+        return self.latest is False or self.last_scraped_filemtime == 0 or \
+               int(item['created_time']) > self.last_scraped_filemtime
 
     def scrape(self):
         """Crawls through and downloads user's media"""
@@ -104,10 +122,12 @@ class InstagramScraper(object):
                 # Download the profile pic if not the default.
                 if 'image' in self.media_types and 'profile_pic_url_hd' in user \
                         and '11906329_960233084022564_1448528159' not in user['profile_pic_url_hd']:
-                    item = {'urls': [re.sub(r'/s\d{3,}x\d{3,}/', '/', user['profile_pic_url_hd'])]}
-                    for item in tqdm.tqdm([item], desc='Searching {0} for profile pic'.format(username), unit=" images", ncols=0, disable=self.quiet):
-                        future = executor.submit(self.download, item, dst)
-                        future_to_item[future] = item
+                    item = {'urls': [re.sub(r'/s\d{3,}x\d{3,}/', '/', user['profile_pic_url_hd'])], 'created_time': 1286323200}
+
+                    if self.latest is False or os.path.isfile(dst + '/' + item['urls'][0].split('/')[-1]) is False:
+                        for item in tqdm.tqdm([item], desc='Searching {0} for profile pic'.format(username), unit=" images", ncols=0, disable=self.quiet):
+                            future = executor.submit(self.download, item, dst)
+                            future_to_item[future] = item
 
                 if self.logged_in and 'story' in self.media_types:
                     # Get the user's stories.
@@ -179,11 +199,12 @@ class InstagramScraper(object):
 
             while True:
                 for item in media['items']:
-                    if self.in_media_types(item):
-                        yield item
+                    if self.in_media_types(item) and self.is_new_media(item):
                         if self.media_metadata:
                             self.posts.append(item)
-                if media.get('more_available'):
+                        yield item
+
+                if media.get('more_available') and self.is_new_media(media['items'][-1]):
                     max_id = media['items'][-1]['id']
                     media = self.fetch_media_json(username, max_id)
                 else:
@@ -333,8 +354,9 @@ def main():
     parser.add_argument('--maximum', '-m', type=int, default=0, help='Maximum number of items to scrape')
     parser.add_argument('--retain_username', '-n', action='store_true',
                         help='Creates username subdirectory when destination flag is set')
-    parser.add_argument('--media_metadata', action='store_true', help='Save media metadata to json file')
+    parser.add_argument('--media_metadata', action='store_true', default=False, help='Save media metadata to json file')
     parser.add_argument('--media_types', '-t', nargs='+', default=['image', 'video', 'story'], help='Specify media types to scrape')
+    parser.add_argument('--latest', action='store_true', default=False, help='Scrape new media since the last scrape')
 
     args = parser.parse_args()
 

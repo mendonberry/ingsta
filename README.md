@@ -72,6 +72,9 @@ OPTIONS
 --media_types -t    Specify media types to scrape. Enter as space separated values. 
                     Valid values are image, video, and story.
 
+--latest            Scrape only new media since the last scrape. Uses the last modified
+                    time of the latest media item in the destination directory to compare.
+
 --quiet       -q    Be quiet while scraping.
 
 --maximum     -m    Maximum number of items to scrape.
