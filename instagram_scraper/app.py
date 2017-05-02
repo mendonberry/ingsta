@@ -108,6 +108,8 @@ class InstagramScraper(object):
             self.login()
 
         for username in self.usernames:
+            self.posts = []
+            self.last_scraped_filemtime = 0
             future_to_item = {}
 
             # Make the destination dir.
