@@ -165,6 +165,7 @@ class InstagramScraper(object):
 
             if self.media_metadata:
                 self.save_media_metadata('{0}/{1}.json'.format(dst, username))
+                self.posts = []
 
         self.logout()
 
