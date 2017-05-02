@@ -36,9 +36,6 @@ class InstagramScraper(object):
         self.logged_in = False
         self.last_scraped_filemtime = 0
 
-        if self.login_user and self.login_pass:
-            self.login()
-
     def login(self):
         """Logs in to instagram"""
         self.session.headers.update({'Referer': BASE_URL})
@@ -105,9 +102,10 @@ class InstagramScraper(object):
         return self.latest is False or self.last_scraped_filemtime == 0 or \
                int(item['created_time']) > self.last_scraped_filemtime
 
-    def scrape(self):
+    def scrape(self, executor=concurrent.futures.ThreadPoolExecutor(max_workers=10)):
         """Crawls through and downloads user's media"""
-        executor = concurrent.futures.ThreadPoolExecutor(max_workers=10)
+        if self.login_user and self.login_pass:
+            self.login()
 
         for username in self.usernames:
             future_to_item = {}
@@ -119,34 +117,38 @@ class InstagramScraper(object):
             user = self.fetch_user(username)
 
             if user:
-                # Download the profile pic if not the default.
-                if 'image' in self.media_types and 'profile_pic_url_hd' in user \
-                        and '11906329_960233084022564_1448528159' not in user['profile_pic_url_hd']:
-                    item = {'urls': [re.sub(r'/s\d{3,}x\d{3,}/', '/', user['profile_pic_url_hd'])], 'created_time': 1286323200}
-
-                    if self.latest is False or os.path.isfile(dst + '/' + item['urls'][0].split('/')[-1]) is False:
-                        for item in tqdm.tqdm([item], desc='Searching {0} for profile pic'.format(username), unit=" images", ncols=0, disable=self.quiet):
-                            future = executor.submit(self.download, item, dst)
-                            future_to_item[future] = item
-
-                if self.logged_in and 'story' in self.media_types:
-                    # Get the user's stories.
-                    stories = self.fetch_stories(user['id'])
-
-                    # Downloads the user's stories and sends it to the executor.
-                    iter = 0
-                    for item in tqdm.tqdm(stories, desc='Searching {0} for stories'.format(username), unit=" media", disable=self.quiet):
-                        iter = iter + 1
-                        if self.maximum != 0 and iter >= self.maximum:
-                            break
-                        else:
-                            future = executor.submit(self.download, item, dst)
-                            future_to_item[future] = item
+                self.get_profile_pic(dst, executor, future_to_item, user, username)
+                self.get_stories(dst, executor, future_to_item, user, username)
 
             # Crawls the media and sends it to the executor.
+            self.get_media(dst, executor, future_to_item, username)
+
+            if self.media_metadata:
+                self.get_media_metadata('{0}/{1}.json'.format(dst, username))
+
+        self.logout()
+
+    def get_profile_pic(self, dst, executor, future_to_item, user, username):
+        # Download the profile pic if not the default.
+        if 'image' in self.media_types and 'profile_pic_url_hd' in user \
+                and '11906329_960233084022564_1448528159' not in user['profile_pic_url_hd']:
+            item = {'urls': [re.sub(r'/s\d{3,}x\d{3,}/', '/', user['profile_pic_url_hd'])], 'created_time': 1286323200}
+
+            if self.latest is False or os.path.isfile(dst + '/' + item['urls'][0].split('/')[-1]) is False:
+                for item in tqdm.tqdm([item], desc='Searching {0} for profile pic'.format(username), unit=" images",
+                                      ncols=0, disable=self.quiet):
+                    future = executor.submit(self.download, item, dst)
+                    future_to_item[future] = item
+
+    def get_stories(self, dst, executor, future_to_item, user, username):
+        if self.logged_in and 'story' in self.media_types:
+            # Get the user's stories.
+            stories = self.fetch_stories(user['id'])
+
+            # Downloads the user's stories and sends it to the executor.
             iter = 0
-            for item in tqdm.tqdm(self.media_gen(username), desc='Searching {0} for posts'.format(username),
-                                unit=' media', disable=self.quiet):
+            for item in tqdm.tqdm(stories, desc='Searching {0} for stories'.format(username), unit=" media",
+                                  disable=self.quiet):
                 iter = iter + 1
                 if self.maximum != 0 and iter >= self.maximum:
                     break
@@ -154,20 +156,26 @@ class InstagramScraper(object):
                     future = executor.submit(self.download, item, dst)
                     future_to_item[future] = item
 
-            # Displays the progress bar of completed downloads. Might not even pop up if all media is downloaded while
-            # the above loop finishes.
-            for future in tqdm.tqdm(concurrent.futures.as_completed(future_to_item), total=len(future_to_item),
+    def get_media(self, dst, executor, future_to_item, username):
+        iter = 0
+        for item in tqdm.tqdm(self.media_gen(username), desc='Searching {0} for posts'.format(username),
+                              unit=' media', disable=self.quiet):
+            iter = iter + 1
+            if self.maximum != 0 and iter >= self.maximum:
+                break
+            else:
+                future = executor.submit(self.download, item, dst)
+                future_to_item[future] = item
+
+        # Displays the progress bar of completed downloads. Might not even pop up if all media is downloaded while
+        # the above loop finishes.
+        for future in tqdm.tqdm(concurrent.futures.as_completed(future_to_item), total=len(future_to_item),
                                 desc='Downloading', disable=self.quiet):
-                item = future_to_item[future]
+            item = future_to_item[future]
 
-                if future.exception() is not None:
-                    self.logger.warning('Media id {0} at {1} generated an exception: {2}'.format(item['id'], item['urls'], future.exception()))
-
-            if self.media_metadata:
-                self.save_media_metadata('{0}/{1}.json'.format(dst, username))
-
-        self.logout()
-
+            if future.exception() is not None:
+                self.logger.warning('Media id {0} at {1} generated an exception: {2}'.format(item['id'], item['urls'],
+                                                                                             future.exception()))
     def fetch_user(self, username):
         """Fetches the user's metadata"""
         resp = self.session.get(BASE_URL + username)
@@ -300,7 +308,7 @@ class InstagramScraper(object):
                 file_time = int(item.get('created_time', item.get('taken_at', time.time())))
                 os.utime(file_path, (file_time, file_time))
 
-    def save_media_metadata(self, dst='./'):
+    def get_media_metadata(self, dst='./'):
         """Saves the media metadata to a json file"""
         if len(self.posts) > 0:
             with open(dst, 'wb') as f:
