@@ -110,6 +110,8 @@ class InstagramScraper(object):
         executor = concurrent.futures.ThreadPoolExecutor(max_workers=10)
 
         for username in self.usernames:
+            self.posts = []
+            self.last_scraped_filemtime = 0
             future_to_item = {}
 
             # Make the destination dir.
@@ -165,7 +167,6 @@ class InstagramScraper(object):
 
             if self.media_metadata:
                 self.save_media_metadata('{0}/{1}.json'.format(dst, username))
-                self.posts = []
 
         self.logout()
 
