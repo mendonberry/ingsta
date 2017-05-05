@@ -17,6 +17,18 @@ class InstagramTests(unittest.TestCase):
         self.response_second_page = open(os.path.join(fixtures_path,
                                                       'response_second_page.json')).read()
 
+        self.response_explore_tags = open(os.path.join(fixtures_path,
+                                                      'response_explore_tags.json')).read()
+
+        self.response_query_hashtag_first_page = open(os.path.join(fixtures_path,
+                                                       'response_query_hashtag_first_page.json')).read()
+
+        self.response_query_hashtag_second_page = open(os.path.join(fixtures_path,
+                                                       'response_query_hashtag_second_page.json')).read()
+
+        self.response_view_media_video = open(os.path.join(fixtures_path,
+                                                       'response_view_media_video.json')).read()
+
         # This is a max id of the last item in response_first_page.json.
         self.max_id = "1369793132326237681_50955533"
 
@@ -27,7 +39,7 @@ class InstagramTests(unittest.TestCase):
             'destination': self.test_dir,
             'login_user': None,
             'login_pass': None,
-            'quiet': False,
+            'quiet': True,
             'maximum': 0,
             'retain_username': False,
             'media_metadata': False,
@@ -57,5 +69,17 @@ class InstagramTests(unittest.TestCase):
             self.assertEqual(open(os.path.join(self.test_dir, 'photo3.jpg')).read(),
                              "image3")
 
+    def test_scrape_hashtag(self):
+        with requests_mock.Mocker() as m:
+            m.get(TAGS_URL.format('test'), text=self.response_explore_tags, cookies={'csrftoken': 'token'})
+            m.post(QUERY_URL, [
+                {'text': self.response_query_hashtag_first_page, 'status_code': 200},
+                {'text': self.response_query_hashtag_second_page, 'status_code': 200}
+            ])
+            m.get(VIEW_MEDIA_URL.format('code4'), text=self.response_view_media_video)
+            m.get('https://fake-url.com/video.mp4', text="video")
 
+            self.scraper.scrape_hashtag()
 
+            self.assertEqual(open(os.path.join(self.test_dir, 'video.mp4')).read(),
+                             "video")

@@ -30,6 +30,17 @@ To scrape a public user's media:
 
     $ instagram-scraper <username>             
 
+*By default, downloaded media will be placed in ``<current working directory>/<username>``.*
+
+To scrape a hashtag for media:
+
+.. code:: bash
+
+    $ instagram-scraper <hashtag without #> --tag          
+
+*It may be useful to specify the ``--maximum <#>`` argument to limit the total number of items to
+scrape when scraping by hashtag.*
+
 To scrape a private user's media when you are an approved follower:
 
 .. code:: bash
@@ -58,7 +69,7 @@ You can also supply a file containing a list of usernames:
 
     # and so on...
 
-The usernames may be separated by newlines, commas, semicolons, or whitespace.
+*The usernames may be separated by newlines, commas, semicolons, or whitespace.*
 
 OPTIONS
 -------
@@ -91,6 +102,8 @@ OPTIONS
 
     --media_metadata    Saves the media metadata associated with the user's posts to 
                         <destination>/<username>.json.
+
+    --tag               Scrapes the specified hashtag for media.
 
 Develop
 -------
