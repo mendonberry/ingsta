@@ -128,8 +128,11 @@ class InstagramScraper(object):
             iter = 0
             for item in tqdm.tqdm(self.hashtag_media_gen(hashtag), desc='Searching #{0} for posts'.format(hashtag), unit=" media",
                                   disable=self.quiet):
-                future = executor.submit(self.download, item, dst)
-                future_to_item[future] = item
+                if ((item['is_video'] is False and 'image' in self.media_types) or \
+                    (item['is_video'] is True and 'video' in self.media_types)
+                ) and self.is_new_media(item):
+                    future = executor.submit(self.download, item, dst)
+                    future_to_item[future] = item
 
                 if self.media_metadata:
                     self.posts.append(item)
@@ -166,11 +169,7 @@ class InstagramScraper(object):
                 try:
                     while True:
                         for item in media:
-                            if (
-                                (item['is_video'] is False and 'image' in self.media_types) or \
-                                (item['is_video'] is True and 'video' in self.media_types)
-                            ) and self.is_new_media(item):
-                                yield item
+                            yield item
 
                         if end_cursor:
                             media, end_cursor = self.query_hashtag(hashtag, end_cursor, csrftoken)
@@ -287,8 +286,9 @@ class InstagramScraper(object):
         iter = 0
         for item in tqdm.tqdm(self.media_gen(username), desc='Searching {0} for posts'.format(username),
                               unit=' media', disable=self.quiet):
-            future = executor.submit(self.download, item, dst)
-            future_to_item[future] = item
+            if self.in_media_types(item) and self.is_new_media(item):
+                future = executor.submit(self.download, item, dst)
+                future_to_item[future] = item
 
             if self.media_metadata:
                 self.posts.append(item)
@@ -328,8 +328,7 @@ class InstagramScraper(object):
 
             while True:
                 for item in media['items']:
-                    if self.in_media_types(item) and self.is_new_media(item):
-                        yield item
+                    yield item
 
                 if media.get('more_available') and self.is_new_media(media['items'][-1]):
                     max_id = media['items'][-1]['id']
