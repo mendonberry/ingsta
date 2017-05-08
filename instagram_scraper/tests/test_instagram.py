@@ -3,6 +3,7 @@ import os
 import shutil
 import tempfile
 import requests_mock
+import glob
 from instagram_scraper import InstagramScraper
 from instagram_scraper.constants import *
 
@@ -10,24 +11,12 @@ class InstagramTests(unittest.TestCase):
 
     def setUp(self):
         fixtures_path = os.path.join(os.path.dirname(__file__), 'fixtures')
-        self.response_user_metadata = open(os.path.join(fixtures_path,
-                                                        'response_user_metadata.json')).read()
-        self.response_first_page = open(os.path.join(fixtures_path,
-                                                     'response_first_page.json')).read()
-        self.response_second_page = open(os.path.join(fixtures_path,
-                                                      'response_second_page.json')).read()
 
-        self.response_explore_tags = open(os.path.join(fixtures_path,
-                                                      'response_explore_tags.json')).read()
+        fixture_files = glob.glob(os.path.join(fixtures_path, '*'))
 
-        self.response_query_hashtag_first_page = open(os.path.join(fixtures_path,
-                                                       'response_query_hashtag_first_page.json')).read()
-
-        self.response_query_hashtag_second_page = open(os.path.join(fixtures_path,
-                                                       'response_query_hashtag_second_page.json')).read()
-
-        self.response_view_media_video = open(os.path.join(fixtures_path,
-                                                       'response_view_media_video.json')).read()
+        for file_path in fixture_files:
+            basename = os.path.splitext(os.path.basename(file_path))[0]
+            self.__dict__[basename] = open(file_path).read()
 
         # This is a max id of the last item in response_first_page.json.
         self.max_id = "1369793132326237681_50955533"
