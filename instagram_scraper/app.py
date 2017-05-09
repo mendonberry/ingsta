@@ -9,6 +9,7 @@ import json
 import logging.config
 import os
 import re
+import textwrap
 import time
 import warnings
 
@@ -475,7 +476,23 @@ class InstagramScraper(object):
 
 def main():
     parser = argparse.ArgumentParser(
-        description="instagram-scraper scrapes and downloads an instagram user's photos and videos.")
+        description="instagram-scraper scrapes and downloads an instagram user's photos and videos.",
+        epilog=textwrap.dedent("""
+        You can hide your credentials from the history, by reading your
+        username from a local file:
+
+        $ instagram-scraper @insta_args.txt user_to_scrape
+
+        with insta_args.txt looking like this:
+        -u=my_username
+        -p=my_password
+
+        You can add all arguments you want to that file, just remember to have
+        one argument per line.
+
+        """),
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        fromfile_prefix_chars='@')
 
     parser.add_argument('username', help='Instagram user(s) to scrape', nargs='*')
     parser.add_argument('--destination', '-d', default='./', help='Download destination')
