@@ -123,6 +123,90 @@ class InstagramScraper(object):
                ('created_time' not in item and 'date' not in item) or \
                (int(item.get('created_time', item.get('date'))) > self.last_scraped_filemtime)
 
+    def query_location(self, location, end_cursor, csrftoken):
+        """Queries the location using GraphQL."""
+        form_data = {
+            'q': QUERY_LOCATION % (location, end_cursor),
+            'ref': 'locations::show',
+        }
+
+        headers = {
+            'X-CSRFToken': csrftoken,
+            'Referer': LOCATIONS_URL.format(location)
+        }
+
+        resp = self.session.post(QUERY_URL, data=form_data, headers=headers)
+
+        if resp.status_code == 200:
+            media = json.loads(resp.text)['media']
+            nodes = media['nodes']
+            return self.get_media_from_nodes(nodes), media['page_info']['end_cursor']
+
+    def location_media_gen(self, location):
+        """Generator for location media."""
+        resp = self.session.get(LOCATIONS_URL.format(location))
+
+        if resp.status_code == 200:
+            csrftoken = resp.cookies['csrftoken']
+            location_data = json.loads(resp.text)['location']
+
+            media = self.get_media_from_nodes(location_data['media']['nodes'])
+            end_cursor = location_data['media']['page_info']['end_cursor']
+
+            if media:
+                try:
+                    while True:
+                        for item in media:
+                            yield item
+
+                        if end_cursor:
+                            media, end_cursor = self.query_location(location, end_cursor, csrftoken)
+                        else:
+                            return
+                except ValueError:
+                    self.logger.exception('Failed to query location #' + location)
+            else:
+                raise ValueError('No media found for location #' + location)
+
+    def scrape_location(self, executor=concurrent.futures.ThreadPoolExecutor(max_workers=10)):
+        """Scrapes the specified location for posted media."""
+        for location in self.usernames:
+            self.posts = []
+            self.last_scraped_filemtime = 0
+            future_to_item = {}
+
+            # Make the destination dir.
+            dst = self.make_dst_dir(location)
+
+            iter = 0
+            for item in tqdm.tqdm(self.location_media_gen(location), desc='Searching #{0} for posts'.format(location), unit=" media",
+                                  disable=self.quiet):
+                if ((item['is_video'] is False and 'image' in self.media_types) or \
+                            (item['is_video'] is True and 'video' in self.media_types)
+                    ) and self.is_new_media(item):
+                    future = executor.submit(self.download, item, dst)
+                    future_to_item[future] = item
+
+                if self.media_metadata:
+                    self.posts.append(item)
+
+                iter = iter + 1
+                if self.maximum != 0 and iter >= self.maximum:
+                    break
+
+            # Displays the progress bar of completed downloads. Might not even pop up if all media is downloaded while
+            # the above loop finishes.
+            for future in tqdm.tqdm(concurrent.futures.as_completed(future_to_item), total=len(future_to_item),
+                                    desc='Downloading', disable=self.quiet):
+                item = future_to_item[future]
+
+                if future.exception() is not None:
+                    self.logger.warning(
+                        'Media for #{0} at {1} generated an exception: {2}'.format( location, item['urls'], future.exception()))
+
+            if self.media_metadata and self.posts:
+                self.save_json(self.posts, '{0}/{1}.json'.format(dst, location))
+
     def scrape_hashtag(self, executor=concurrent.futures.ThreadPoolExecutor(max_workers=10)):
         """Scrapes the specified hashtag for posted media."""
         for hashtag in self.usernames:
@@ -514,6 +598,7 @@ def main():
     parser.add_argument('--media_types', '-t', nargs='+', default=['image', 'video', 'story'], help='Specify media types to scrape')
     parser.add_argument('--latest', action='store_true', default=False, help='Scrape new media since the last scrape')
     parser.add_argument('--tag', action='store_true', default=False, help='Scrape media using a hashtag')
+    parser.add_argument('--location', action='store_true', default=False, help='Scrape media using a location')
 
     args = parser.parse_args()
 
@@ -540,6 +625,8 @@ def main():
 
     if args.tag:
         scraper.scrape_hashtag()
+    elif args.location:
+        scraper.scrape_location()
     else:
         scraper.scrape()
 

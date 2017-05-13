@@ -72,3 +72,18 @@ class InstagramTests(unittest.TestCase):
 
             self.assertEqual(open(os.path.join(self.test_dir, 'video.mp4')).read(),
                              "video")
+
+    def test_scrape_location(self):
+        with requests_mock.Mocker() as m:
+            m.get(LOCATIONS_URL.format('test'), text=self.response_explore_location, cookies={'csrftoken': 'token'})
+            m.post(QUERY_URL, [
+                {'text': self.response_query_hashtag_first_page, 'status_code': 200},
+                {'text': self.response_query_hashtag_second_page, 'status_code': 200}
+            ])
+            m.get(VIEW_MEDIA_URL.format('code4'), text=self.response_view_media_video)
+            m.get('https://fake-url.com/video.mp4', text="video")
+
+            self.scraper.scrape_location()
+
+            self.assertEqual(open(os.path.join(self.test_dir, 'video.mp4')).read(),
+                             "video")

@@ -8,6 +8,7 @@ STORIES_UA = 'Instagram 9.5.2 (iPhone7,2; iPhone OS 9_3_3; en_US; en-US; scale=2
 STORIES_COOKIE = 'ds_user_id={0}; sessionid={1};'
 
 TAGS_URL = BASE_URL + 'explore/tags/{0}/?__a=1'
+LOCATIONS_URL = BASE_URL + 'explore/locations/{0}/?__a=1'
 QUERY_URL = BASE_URL + 'query/'
 VIEW_MEDIA_URL = BASE_URL + 'p/{0}/?__a=1'
 
@@ -24,5 +25,38 @@ QUERY_HASHTAG = ' '.join("""
             },
             page_info
         }   
+    }
+    """.split())
+
+QUERY_LOCATION = ' '.join("""
+    ig_location(%s) {
+        media.after(%s, 12) {
+            count,
+                nodes {
+                    caption,
+                    code,
+                    comments {
+                        count
+                    },
+                    comments_disabled,
+                    date,
+                    dimensions {
+                        height,
+                        width
+                    },
+                    display_src,
+                    id,
+                    is_video,
+                    likes {
+                        count
+                    },
+                    owner {
+                        id
+                    },
+                    thumbnail_src,
+                    video_views
+                },
+                page_info
+        }
     }
     """.split())
