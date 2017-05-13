@@ -11,3 +11,5 @@ instagram-scraper is written and maintained by Richard Arcega, along with the fo
 - Dillon Newell ([@DillonN](https://github.com/DillonN))
 - Daniel M. Capella ([@polyzen](https://github.com/polyzen))
 - Carl Helmertz ([@chelmertz](https://github.com/chelmertz))
+- Gaurav Kalra ([@gvkalra](https://github.com/gvkalra))
+
