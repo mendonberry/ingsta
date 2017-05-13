@@ -9,6 +9,7 @@ import json
 import logging.config
 import os
 import re
+import sys
 import textwrap
 import time
 import warnings
@@ -18,6 +19,12 @@ import requests
 import tqdm
 
 from instagram_scraper.constants import *
+
+try:
+    reload(sys)  # Python 2.7
+    sys.setdefaultencoding("UTF8")
+except NameError:
+    pass
 
 warnings.filterwarnings('ignore')
 
