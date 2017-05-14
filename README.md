@@ -94,6 +94,8 @@ OPTIONS
                     <destination>/<username>.json.
 
 --tag               Scrapes the specified hashtag for media.
+--location          Scrapes the specified location for media.
+
 ```
 
 Develop

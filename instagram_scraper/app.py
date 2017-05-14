@@ -28,8 +28,8 @@ except NameError:
 
 warnings.filterwarnings('ignore')
 
-class InstagramScraper(object):
 
+class InstagramScraper(object):
     """InstagramScraper scrapes and downloads an instagram user's photos and videos"""
     def __init__(self, **kwargs):
         default_attr = dict(username='', usernames=[], filename=None,
@@ -123,7 +123,29 @@ class InstagramScraper(object):
                ('created_time' not in item and 'date' not in item) or \
                (int(item.get('created_time', item.get('date'))) > self.last_scraped_filemtime)
 
-    def query_location(self, location, end_cursor, csrftoken):
+    def __query(self, form_data, headers):
+        resp = self.session.post(QUERY_URL, data=form_data, headers=headers)
+
+        if resp.status_code == 200:
+            media = json.loads(resp.text)['media']
+            nodes = media['nodes']
+            return self.__get_media_from_nodes(nodes), media['page_info']['end_cursor']
+
+    def query_hashtag(self, tag, end_cursor, csrf_token):
+        """Queries the hashtag using GraphQL."""
+        form_data = {
+            'q': QUERY_HASHTAG % (tag, end_cursor),
+            'ref': 'tags::show',
+        }
+
+        headers = {
+            'X-CSRFToken': csrf_token,
+            'Referer': TAGS_URL.format(tag)
+        }
+
+        return self.__query(form_data, headers)
+
+    def query_location(self, location, end_cursor, csrf_token):
         """Queries the location using GraphQL."""
         form_data = {
             'q': QUERY_LOCATION % (location, end_cursor),
@@ -131,27 +153,22 @@ class InstagramScraper(object):
         }
 
         headers = {
-            'X-CSRFToken': csrftoken,
+            'X-CSRFToken': csrf_token,
             'Referer': LOCATIONS_URL.format(location)
         }
 
-        resp = self.session.post(QUERY_URL, data=form_data, headers=headers)
+        return self.__query(form_data, headers)
+
+    def __query_media_gen(self, url, value, root_field, query_fn):
+        """Generator for query media."""
+        resp = self.session.get(url.format(value))
 
         if resp.status_code == 200:
-            media = json.loads(resp.text)['media']
-            nodes = media['nodes']
-            return self.get_media_from_nodes(nodes), media['page_info']['end_cursor']
+            csrf_token = resp.cookies['csrftoken']
+            obj = json.loads(resp.text)[root_field]
 
-    def location_media_gen(self, location):
-        """Generator for location media."""
-        resp = self.session.get(LOCATIONS_URL.format(location))
-
-        if resp.status_code == 200:
-            csrftoken = resp.cookies['csrftoken']
-            location_data = json.loads(resp.text)['location']
-
-            media = self.get_media_from_nodes(location_data['media']['nodes'])
-            end_cursor = location_data['media']['page_info']['end_cursor']
+            media = self.__get_media_from_nodes(obj['media']['nodes'])
+            end_cursor = obj['media']['page_info']['end_cursor']
 
             if media:
                 try:
@@ -160,119 +177,21 @@ class InstagramScraper(object):
                             yield item
 
                         if end_cursor:
-                            media, end_cursor = self.query_location(location, end_cursor, csrftoken)
+                            media, end_cursor = query_fn(value, end_cursor, csrf_token)
                         else:
                             return
                 except ValueError:
-                    self.logger.exception('Failed to query location #' + location)
+                    self.logger.exception('Failed to query ' + value)
             else:
-                raise ValueError('No media found for location #' + location)
+                raise ValueError('No media found for ' + value)
 
-    def scrape_location(self, executor=concurrent.futures.ThreadPoolExecutor(max_workers=10)):
-        """Scrapes the specified location for posted media."""
-        for location in self.usernames:
-            self.posts = []
-            self.last_scraped_filemtime = 0
-            future_to_item = {}
+    def media_gen_hashtag(self, hashtag):
+        return self.__query_media_gen(TAGS_URL, hashtag, 'tag', self.query_hashtag)
 
-            # Make the destination dir.
-            dst = self.make_dst_dir(location)
+    def media_gen_location(self, location):
+        return self.__query_media_gen(LOCATIONS_URL, location, 'location', self.query_location)
 
-            iter = 0
-            for item in tqdm.tqdm(self.location_media_gen(location), desc='Searching #{0} for posts'.format(location), unit=" media",
-                                  disable=self.quiet):
-                if ((item['is_video'] is False and 'image' in self.media_types) or \
-                            (item['is_video'] is True and 'video' in self.media_types)
-                    ) and self.is_new_media(item):
-                    future = executor.submit(self.download, item, dst)
-                    future_to_item[future] = item
-
-                if self.media_metadata:
-                    self.posts.append(item)
-
-                iter = iter + 1
-                if self.maximum != 0 and iter >= self.maximum:
-                    break
-
-            # Displays the progress bar of completed downloads. Might not even pop up if all media is downloaded while
-            # the above loop finishes.
-            for future in tqdm.tqdm(concurrent.futures.as_completed(future_to_item), total=len(future_to_item),
-                                    desc='Downloading', disable=self.quiet):
-                item = future_to_item[future]
-
-                if future.exception() is not None:
-                    self.logger.warning(
-                        'Media for #{0} at {1} generated an exception: {2}'.format( location, item['urls'], future.exception()))
-
-            if self.media_metadata and self.posts:
-                self.save_json(self.posts, '{0}/{1}.json'.format(dst, location))
-
-    def scrape_hashtag(self, executor=concurrent.futures.ThreadPoolExecutor(max_workers=10)):
-        """Scrapes the specified hashtag for posted media."""
-        for hashtag in self.usernames:
-            self.posts = []
-            self.last_scraped_filemtime = 0
-            future_to_item = {}
-
-            # Make the destination dir.
-            dst = self.make_dst_dir(hashtag)
-
-            iter = 0
-            for item in tqdm.tqdm(self.hashtag_media_gen(hashtag), desc='Searching #{0} for posts'.format(hashtag), unit=" media",
-                                  disable=self.quiet):
-                if ((item['is_video'] is False and 'image' in self.media_types) or \
-                    (item['is_video'] is True and 'video' in self.media_types)
-                ) and self.is_new_media(item):
-                    future = executor.submit(self.download, item, dst)
-                    future_to_item[future] = item
-
-                if self.media_metadata:
-                    self.posts.append(item)
-
-                iter = iter + 1
-                if self.maximum != 0 and iter >= self.maximum:
-                    break
-
-            # Displays the progress bar of completed downloads. Might not even pop up if all media is downloaded while
-            # the above loop finishes.
-            for future in tqdm.tqdm(concurrent.futures.as_completed(future_to_item), total=len(future_to_item),
-                                    desc='Downloading', disable=self.quiet):
-                item = future_to_item[future]
-
-                if future.exception() is not None:
-                    self.logger.warning(
-                        'Media for #{0} at {1} generated an exception: {2}'.format( hashtag, item['urls'], future.exception()))
-
-            if self.media_metadata and self.posts:
-                self.save_json(self.posts, '{0}/{1}.json'.format(dst, hashtag))
-
-    def hashtag_media_gen(self, hashtag):
-        """Generator for hashtag media."""
-        resp = self.session.get(TAGS_URL.format(hashtag))
-
-        if resp.status_code == 200:
-            csrftoken = resp.cookies['csrftoken']
-            tag = json.loads(resp.text)['tag']
-
-            media = self.get_media_from_nodes(tag['media']['nodes'])
-            end_cursor = tag['media']['page_info']['end_cursor']
-
-            if media:
-                try:
-                    while True:
-                        for item in media:
-                            yield item
-
-                        if end_cursor:
-                            media, end_cursor = self.query_hashtag(hashtag, end_cursor, csrftoken)
-                        else:
-                            return
-                except ValueError:
-                    self.logger.exception('Failed to query hashtag #' + hashtag)
-            else:
-                raise ValueError('No media found for hashtag #' + hashtag)
-
-    def get_media_from_nodes(self, nodes):
+    def __get_media_from_nodes(self, nodes):
         """Fetches the media urls."""
         for node in nodes:
             if node['is_video']:
@@ -287,24 +206,41 @@ class InstagramScraper(object):
                 self.extract_tags(node)
         return nodes
 
-    def query_hashtag(self, tag, end_cursor, csrftoken):
-        """Queries the hashtag using GraphQL."""
-        form_data = {
-            'q': QUERY_HASHTAG % (tag, end_cursor),
-            'ref': 'tags::show',
-        }
+    def scrape_query(self, media_generator, executor=concurrent.futures.ThreadPoolExecutor(max_workers=10)):
+        """Scrapes the specified value for posted media."""
+        for value in self.usernames:
+            self.posts = []
+            self.last_scraped_filemtime = 0
+            future_to_item = {}
 
-        headers = {
-            'X-CSRFToken': csrftoken,
-            'Referer': TAGS_URL.format(tag)
-        }
+            dst = self.make_dst_dir(value)
 
-        resp = self.session.post(QUERY_URL, data=form_data, headers=headers)
+            iter = 0
+            for item in tqdm.tqdm(media_generator(value), desc='Searching {0} for posts'.format(value), unit=" media",
+                                  disable=self.quiet):
+                if ((item['is_video'] is False and 'image' in self.media_types) or \
+                    (item['is_video'] is True and 'video' in self.media_types)
+                ) and self.is_new_media(item):
+                    future = executor.submit(self.download, item, dst)
+                    future_to_item[future] = item
 
-        if resp.status_code == 200:
-            media = json.loads(resp.text)['media']
-            nodes = media['nodes']
-            return self.get_media_from_nodes(nodes), media['page_info']['end_cursor']
+                if self.media_metadata:
+                    self.posts.append(item)
+
+                iter = iter + 1
+                if self.maximum != 0 and iter >= self.maximum:
+                    break
+
+            for future in tqdm.tqdm(concurrent.futures.as_completed(future_to_item), total=len(future_to_item),
+                                    desc='Downloading', disable=self.quiet):
+                item = future_to_item[future]
+
+                if future.exception() is not None:
+                    self.logger.warning(
+                        'Media for {0} at {1} generated an exception: {2}'.format(value, item['urls'], future.exception()))
+
+            if self.media_metadata and self.posts:
+                self.save_json(self.posts, '{0}/{1}.json'.format(dst, value))
 
     def scrape(self, executor=concurrent.futures.ThreadPoolExecutor(max_workers=10)):
         """Crawls through and downloads user's media"""
@@ -316,7 +252,6 @@ class InstagramScraper(object):
             self.last_scraped_filemtime = 0
             future_to_item = {}
 
-            # Make the destination dir.
             dst = self.make_dst_dir(username)
 
             # Get the user metadata.
@@ -613,6 +548,10 @@ def main():
         parser.print_help()
         raise ValueError('Must provide only one of the following: username(s) OR a filename containing username(s)')
 
+    if args.tag and args.location:
+        parser.print_help()
+        raise ValueError('Must provide only one of the following: hashtag OR location')
+
     if args.filename:
         args.usernames = InstagramScraper.parse_file_usernames(args.filename)
     else:
@@ -624,9 +563,9 @@ def main():
     scraper = InstagramScraper(**vars(args))
 
     if args.tag:
-        scraper.scrape_hashtag()
+        scraper.scrape_query(scraper.media_gen_hashtag)
     elif args.location:
-        scraper.scrape_location()
+        scraper.scrape_query(scraper.media_gen_location)
     else:
         scraper.scrape()
 

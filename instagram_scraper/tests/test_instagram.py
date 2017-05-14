@@ -68,7 +68,7 @@ class InstagramTests(unittest.TestCase):
             m.get(VIEW_MEDIA_URL.format('code4'), text=self.response_view_media_video)
             m.get('https://fake-url.com/video.mp4', text="video")
 
-            self.scraper.scrape_hashtag()
+            self.scraper.scrape_query(self.scraper.media_gen_hashtag)
 
             self.assertEqual(open(os.path.join(self.test_dir, 'video.mp4')).read(),
                              "video")
@@ -83,7 +83,7 @@ class InstagramTests(unittest.TestCase):
             m.get(VIEW_MEDIA_URL.format('code4'), text=self.response_view_media_video)
             m.get('https://fake-url.com/video.mp4', text="video")
 
-            self.scraper.scrape_location()
+            self.scraper.scrape_query(self.scraper.media_gen_location)
 
             self.assertEqual(open(os.path.join(self.test_dir, 'video.mp4')).read(),
                              "video")
