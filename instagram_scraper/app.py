@@ -206,7 +206,7 @@ class InstagramScraper(object):
                 self.extract_tags(node)
         return nodes
 
-    def scrape_query(self, media_generator, executor=concurrent.futures.ThreadPoolExecutor(max_workers=10)):
+    def __scrape_query(self, media_generator, executor=concurrent.futures.ThreadPoolExecutor(max_workers=10)):
         """Scrapes the specified value for posted media."""
         for value in self.usernames:
             self.posts = []
@@ -241,6 +241,12 @@ class InstagramScraper(object):
 
             if self.media_metadata and self.posts:
                 self.save_json(self.posts, '{0}/{1}.json'.format(dst, value))
+
+    def scrape_hashtag(self):
+        self.__scrape_query(self.media_gen_hashtag)
+
+    def scrape_location(self):
+        self.__scrape_query(self.media_gen_location)
 
     def scrape(self, executor=concurrent.futures.ThreadPoolExecutor(max_workers=10)):
         """Crawls through and downloads user's media"""
@@ -563,9 +569,9 @@ def main():
     scraper = InstagramScraper(**vars(args))
 
     if args.tag:
-        scraper.scrape_query(scraper.media_gen_hashtag)
+        scraper.scrape_hashtag()
     elif args.location:
-        scraper.scrape_query(scraper.media_gen_location)
+        scraper.scrape_location()
     else:
         scraper.scrape()
 
