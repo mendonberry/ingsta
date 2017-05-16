@@ -316,6 +316,9 @@ class InstagramScraper(object):
 
     def get_media(self, dst, executor, future_to_item, username):
         """Scrapes the user's posts for media."""
+        if 'video' not in self.media_types and 'image' not in self.media_types:
+            return
+
         iter = 0
         for item in tqdm.tqdm(self.media_gen(username), desc='Searching {0} for posts'.format(username),
                               unit=' media', disable=self.quiet):
@@ -442,7 +445,12 @@ class InstagramScraper(object):
 
     def set_story_url(self, item):
         """Sets the story url."""
-        item['urls'] = [item['image_versions2']['candidates'][0]['url'].split('?')[0]]
+        urls = []
+        if 'video_versions' in item:
+            urls.append(item['video_versions'][0]['url'].split('?')[0])
+        if 'image_versions2' in item:
+            urls.append(self.get_original_image(item['image_versions2']['candidates'][0]['url'].split('?')[0]))
+        item['urls'] = urls
         return item
 
     def download(self, item, save_dir='./'):
