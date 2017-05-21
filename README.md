@@ -1,10 +1,12 @@
-<img src="http://i.imgur.com/iH2jdhV.png" align="right" />
+<img src="https://camo.githubusercontent.com/9ac4a1f7f5ea0f573451b5ddc06e29c8aa113a85/68747470733a2f2f692e696d6775722e636f6d2f6948326a6468562e706e67" align="right" />
 
 Instagram Scraper
 =================
 [![PyPI](https://img.shields.io/pypi/v/instagram-scraper.svg)](https://pypi.python.org/pypi/instagram-scraper) [![Build Status](https://travis-ci.org/rarcega/instagram-scraper.svg?branch=master)](https://travis-ci.org/rarcega/instagram-scraper)
 
 instagram-scraper is a command-line application written in Python that scrapes and downloads an instagram user's photos and videos. Use responsibly.
+
+<img src="https://cloud.githubusercontent.com/assets/140931/26286341/065205c2-3e31-11e7-9755-2a9a59abab16.gif" />
 
 Install
 -------
