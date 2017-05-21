@@ -6,7 +6,7 @@ Instagram Scraper
 
 instagram-scraper is a command-line application written in Python that scrapes and downloads an instagram user's photos and videos. Use responsibly.
 
-<img src="https://cloud.githubusercontent.com/assets/140931/26286374/328c829c-3e32-11e7-8051-8f9d0bf34b75.gif">
+<img src="https://cloud.githubusercontent.com/assets/140931/26286476/8232e15e-3e34-11e7-9e1c-9ecda92950e1.gif">
 
 Install
 -------
