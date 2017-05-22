@@ -93,7 +93,8 @@ OPTIONS
 --maximum     -m    Maximum number of items to scrape.
 
 --media_metadata    Saves the media metadata associated with the user's posts to 
-                    <destination>/<username>.json.
+                    <destination>/<username>.json. Can be combined with -t none
+                    to only fetch the metadata without downloading the media.
 
 --tag               Scrapes the specified hashtag for media.
 
