@@ -230,14 +230,15 @@ class InstagramScraper(object):
                 iter = iter + 1
                 if self.maximum != 0 and iter >= self.maximum:
                     break
+            
+            if future_to_item:
+                for future in tqdm.tqdm(concurrent.futures.as_completed(future_to_item), total=len(future_to_item),
+                                        desc='Downloading', disable=self.quiet):
+                    item = future_to_item[future]
 
-            for future in tqdm.tqdm(concurrent.futures.as_completed(future_to_item), total=len(future_to_item),
-                                    desc='Downloading', disable=self.quiet):
-                item = future_to_item[future]
-
-                if future.exception() is not None:
-                    self.logger.warning(
-                        'Media for {0} at {1} generated an exception: {2}'.format(value, item['urls'], future.exception()))
+                    if future.exception() is not None:
+                        self.logger.warning(
+                            'Media for {0} at {1} generated an exception: {2}'.format(value, item['urls'], future.exception()))
 
             if self.media_metadata and self.posts:
                 self.save_json(self.posts, '{0}/{1}.json'.format(dst, value))
@@ -272,13 +273,14 @@ class InstagramScraper(object):
 
             # Displays the progress bar of completed downloads. Might not even pop up if all media is downloaded while
             # the above loop finishes.
-            for future in tqdm.tqdm(concurrent.futures.as_completed(future_to_item), total=len(future_to_item),
-                                    desc='Downloading', disable=self.quiet):
-                item = future_to_item[future]
+            if future_to_item:
+                for future in tqdm.tqdm(concurrent.futures.as_completed(future_to_item), total=len(future_to_item),
+                                        desc='Downloading', disable=self.quiet):
+                    item = future_to_item[future]
 
-                if future.exception() is not None:
-                    self.logger.warning(
-                        'Media at {0} generated an exception: {1}'.format(item['urls'], future.exception()))
+                    if future.exception() is not None:
+                        self.logger.warning(
+                            'Media at {0} generated an exception: {1}'.format(item['urls'], future.exception()))
 
             if self.media_metadata and self.posts:
                 self.save_json(self.posts, '{0}/{1}.json'.format(dst, username))
