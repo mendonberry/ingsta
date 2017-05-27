@@ -83,7 +83,8 @@ OPTIONS
                       set.
 
 --media_types -t    Specify media types to scrape. Enter as space separated values. 
-                    Valid values are image, video, story, or none.
+                    Valid values are image, video, story, or none. Stories require
+                    a --login_user and --login_pass to be defined.
 
 --latest            Scrape only new media since the last scrape. Uses the last modified
                     time of the latest media item in the destination directory to compare.
