@@ -14,24 +14,41 @@ VIEW_MEDIA_URL = BASE_URL + 'p/{0}/?__a=1'
 
 QUERY_HASHTAG = ' '.join("""
     ig_hashtag(%s) { 
-        media.after(%s, 20) {
-            nodes {
-                id,
-                code,
-                date,
-                caption,
-                display_src,
-                is_video
-            },
-            page_info
+        media.after(%s, 50) {
+                count,
+                nodes {
+                    caption,
+                    code,
+                    comments {
+                        count
+                    },
+                    comments_disabled,
+                    date,
+                    dimensions {
+                        height,
+                        width
+                    },
+                    display_src,
+                    id,
+                    is_video,
+                    likes {
+                        count
+                    },
+                    owner {
+                        id
+                    },
+                    thumbnail_src,
+                    video_views
+                },
+                page_info
         }   
     }
     """.split())
 
 QUERY_LOCATION = ' '.join("""
     ig_location(%s) {
-        media.after(%s, 12) {
-            count,
+        media.after(%s, 50) {
+                count,
                 nodes {
                     caption,
                     code,
